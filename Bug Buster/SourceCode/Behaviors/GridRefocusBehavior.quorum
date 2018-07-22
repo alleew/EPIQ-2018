@@ -1,0 +1,16 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+
+class GridRefocusBehavior is Behavior
+    action Run(BehaviorEvent event)
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        Player player = main:GetPlayer()
+        main:GetGrid():Focus(player:GetXIndex(), player:GetYIndex())
+    end
+
+    action IsFinished returns boolean
+        return true
+    end
+end

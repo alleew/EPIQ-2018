@@ -1,0 +1,81 @@
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.System.File
+
+class Level2
+
+    integer rows = 8
+    integer columns = 8
+    integer columnCount = 0
+
+    /*
+    Constants representing tile types. Each is one character to make it easier
+    to visually identify what the map is from a glance.
+
+    F: Floor
+    B: Base
+    A: Abyss
+    */
+    public constant integer F = 0
+    public constant integer B = 1
+    public constant integer A = 2
+
+    /*
+    Level setup:
+    F F F F F F F F
+    F A F F A A F A
+    F F A F F F F F
+    A F A F A F A F
+    F F F F A F F F
+    F A F F F F F F
+    F A F A F A F A
+    B B B B B B B B
+    */
+
+    action Write
+        JavaScriptObjectNotation json
+        json:Add("rows", rows)
+        json:Add("columns", columns)
+
+        JavaScriptObjectNotation data
+        data:SetKey("data")
+        WriteColumn(data, B, F, F, F, A, F, F, F)
+        WriteColumn(data, B, A, A, F, F, F, A, F)
+        WriteColumn(data, B, F, F, F, A, A, F, F)
+        WriteColumn(data, B, A, F, F, F, F, F, F)
+        WriteColumn(data, B, F, F, A, A, F, A, F)
+        WriteColumn(data, B, A, F, F, F, F, A, F)
+        WriteColumn(data, B, F, F, F, A, F, F, F)
+        WriteColumn(data, B, A, F, F, F, F, A, F)
+
+        json:Add(data)
+
+        File file
+        file:SetPath("Output/level2.json")
+        file:Write(json:ToText())
+    end
+
+    action WriteColumn(JavaScriptObjectNotation json, integer c0, integer c1, integer c2, integer c3, integer c4, integer c5, integer c6, integer c7) returns JavaScriptObjectNotation
+        JavaScriptObjectNotation array
+        array:SetKey("" + columnCount)
+        array:SetArray()
+        array:Add(c0)
+        array:Add(c1)
+        array:Add(c2)
+        array:Add(c3)
+        array:Add(c4)
+        array:Add(c5)
+        array:Add(c6)
+        array:Add(c7)
+        json:Add(array)
+        columnCount = columnCount + 1
+        return json
+    end
+
+    action GetRows returns integer
+        return rows
+    end
+
+    action GetColumns returns integer
+        return columns
+    end
+end

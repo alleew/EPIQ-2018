@@ -1,0 +1,14 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Item
+
+class GridRight is Behavior
+    action Run(BehaviorEvent event)
+        Item item = event:GetItem()
+        if item is Tile
+            Tile tile = cast(Tile, item)
+            Grid grid = tile:GetGrid()
+            grid:Focus(tile:GetXIndex() + 1, tile:GetYIndex())
+        end
+    end
+end

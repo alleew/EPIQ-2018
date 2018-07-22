@@ -1,0 +1,13 @@
+use Libraries.Interface.Item2D
+
+class GameplayInfo is Item2D
+    on create
+        SetAccessibilityCode(parent:Item:CUSTOM)
+        SetFocusable(true)
+    end
+
+    action Set(text name, text description)
+        SetName(name)
+        SetDescription(description)
+    end
+end

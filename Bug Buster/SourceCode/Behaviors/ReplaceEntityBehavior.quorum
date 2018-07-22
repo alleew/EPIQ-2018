@@ -1,0 +1,24 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+
+class ReplaceEntityBehavior is Behavior
+
+    Entity original
+    Entity replacement
+
+    action SetEntities(Entity original, Entity replacement)
+        me:original = original
+        me:replacement = replacement
+    end
+
+    action Run(BehaviorEvent event)
+        Grid grid = original:GetGrid()
+        if replacement not= undefined
+            grid:ReplaceEntity(original, replacement)
+        end
+    end
+
+    action IsFinished returns boolean
+        return true
+    end
+end

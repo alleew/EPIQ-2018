@@ -1,0 +1,13 @@
+All graphical assets found in the "assets" folder are in the public domain.
+
+"table-thump" and "table-thump-original" derived from "thump2.wav" by user UncleSigmund on Freesound. Licensed under Creative Commons 0.
+https://freesound.org/people/UncleSigmund/sounds/31354/
+
+"hit-soft" derived from "Billiard balls single hit-dry.wav" by user juskiddink on Freesound. Used under Attribution License.
+https://freesound.org/people/juskiddink/sounds/108615/
+
+"I Knew a Guy" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 3.0 License
+http://creativecommons.org/licenses/by/3.0/
+
+"click.wav" is under the public domain.

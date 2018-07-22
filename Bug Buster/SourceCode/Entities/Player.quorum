@@ -1,0 +1,88 @@
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.Graphics.Texture
+use Libraries.Containers.Array
+
+class Player is Entity
+    
+    integer xIndex = -1
+    integer yIndex = -1
+    integer startX = -1
+    integer startY = -1
+
+    action Initialize(number squareLength)
+        // Temporary player asset.
+//        Drawable triangle
+//        triangle:LoadFilledTriangle(0, 0, cast(integer, squareLength * 0.75), 0, cast(integer, (squareLength * 0.75)/2), cast(integer, squareLength * 0.75))
+//        SetDrawable(triangle)
+
+        Drawable turret
+        Texture idle
+        idle:LoadFromFile("Assets/Turret/Turret.png")
+        turret:Load(idle)
+        SetDrawable(turret)
+        SetName("Player")
+
+        SetType(parent:Entity:PLAYER)
+        SetMovement(2)
+        SetMaximumHP(3)
+        SetHP(3)
+
+        IdleAnimationBehavior behavior
+        Array<Texture> animations
+        Texture frame1
+        Texture frame2
+        Texture frame3
+        Texture frame4
+        Texture frame5
+        frame1:LoadFromFile("Assets/Turret/TurretAnimation1.png")
+        frame2:LoadFromFile("Assets/Turret/TurretAnimation2.png")
+        frame3:LoadFromFile("Assets/Turret/TurretAnimation3.png")
+        frame4:LoadFromFile("Assets/Turret/TurretAnimation4.png")
+        frame5:LoadFromFile("Assets/Turret/TurretAnimation5.png")
+        animations:Add(frame1)
+        animations:Add(frame2)
+        animations:Add(frame3)
+        animations:Add(frame4)
+        animations:Add(frame5)
+        behavior:SetTextures(idle, animations)
+        turret:AddBehavior(behavior)
+    end
+
+    action SetIndices(integer x, integer y)
+        xIndex = x
+        yIndex = y
+    end
+
+    action GetXIndex returns integer
+        return xIndex
+    end
+
+    action GetYIndex returns integer
+        return yIndex
+    end
+
+    action SetStartIndices(integer x, integer y)
+        startX = x
+        startY = y
+    end
+
+    action GetStartXIndex returns integer
+        return startY
+    end
+
+    action GetStartYIndex returns integer
+        return startY
+    end
+
+    action GetDescription returns text
+        text hitPoints = ""
+        if IsDestructible()
+            hitPoints = GetHP() + " of " + GetMaximumHP() + " HP"
+        else
+            hitPoints = "Indestructable"
+        end
+
+        text movementPoints = "Can only move on Base tiles."
+        return hitPoints + ", " + movementPoints
+    end
+end

@@ -1,0 +1,40 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+
+class EggHatchingBehavior is Behavior
+
+    Egg egg = undefined
+
+    action SetEgg(Egg e)
+        egg = e
+    end
+
+    action GetEgg returns Egg
+        return egg
+    end
+
+    action Run(BehaviorEvent event)
+        Grid grid = egg:GetGrid()
+        Entity spawn = egg:GetSpawn()
+
+        if spawn not= undefined
+            GameStateManager manager
+            Main main = cast(Main, manager:GetGame())
+
+            ReplaceEntityBehavior replace
+            replace:SetEntities(egg, spawn)
+            main:AddBehavior(replace)
+
+            GameplayInfo info
+            info:Set(spawn:GetName(), " hatched from " + egg:GetName() + " at " + egg:GetXIndex() + " " + egg:GetYIndex())
+            ReportInformationBehavior report
+            report:SetInfo(info)
+            main:AddBehavior(report)
+        end
+    end
+
+    action IsFinished returns boolean
+        return true
+    end
+end

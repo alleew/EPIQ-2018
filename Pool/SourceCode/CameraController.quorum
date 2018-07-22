@@ -1,0 +1,162 @@
+use Libraries.Game.Graphics.Camera
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Events.MouseMovementListener
+use Libraries.Game.Layer2D
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Events.KeyboardListener
+use Libraries.Compute.Vector3
+
+class CameraController is Layer2D, MouseMovementListener, KeyboardListener
+    Camera camera = undefined
+
+    number yaw = 0
+    number pitch = 0
+    number roll = 0
+
+    number sensitivityX = 0.2
+    number sensitivityY = 0.2
+
+    number movementSpeed = 10
+
+    number moving = 0
+    number strafing = 0
+
+    on create
+        AddMouseMovementListener(me)
+    end
+
+    action DraggedMouse(MouseEvent event)
+        number x = event:GetMovementX()
+        number y = event:GetMovementY()
+        
+        x = x * sensitivityX
+        y = y * sensitivityY
+
+        SetYawPitchRoll(yaw + x, pitch + y, roll)
+    end
+
+    action PressedKey(KeyboardEvent event)
+        if camera = undefined
+            return now
+        end
+
+        if event:keyCode = event:W
+            moving = moving + 1
+        elseif event:keyCode = event:S
+            moving = moving - 1
+        elseif event:keyCode = event:A
+            strafing = strafing + 1
+        elseif event:keyCode = event:D
+            strafing = strafing - 1
+        end
+    end
+
+    action ReleasedKey(KeyboardEvent event)
+        if camera = undefined
+            return now
+        end
+
+        if event:keyCode = event:W
+            moving = moving - 1
+        elseif event:keyCode = event:S
+            moving = moving + 1
+        elseif event:keyCode = event:A
+            strafing = strafing - 1
+        elseif event:keyCode = event:D
+            strafing = strafing + 1
+        end
+    end
+    
+    action Update(number seconds)
+        if camera = undefined
+            return now
+        end
+
+        if moving not= 0
+            Vector3 direction = camera:GetDirection():Copy()
+            direction:Scale(moving * movementSpeed * seconds)
+            camera:Move(direction)
+        end
+
+        if strafing not= 0
+            Vector3 direction = camera:GetDirection():Copy()
+            direction:CrossProduct(camera:GetUp())
+            camera:Move(direction:Scale(strafing * movementSpeed * seconds))
+        end
+
+        parent:Layer2D:Update(seconds)
+    end
+
+    action SetCamera(Camera cam)
+        camera = cam
+    end
+
+    action GetCamera returns Camera
+        return camera
+    end
+
+    action SetYaw(number y)
+        yaw = y
+        camera:SetYawPitchRoll(yaw, pitch, roll)
+    end
+
+    action SetPitch(number p)
+        if p > 90.0
+            p = 90.0
+        elseif p < -90.0
+            p = -90.0
+        end
+        pitch = p
+        camera:SetYawPitchRoll(yaw, pitch, roll)
+    end
+
+    action SetRoll(number r)
+        roll = r
+        camera:SetYawPitchRoll(yaw, pitch, roll)
+    end
+
+    action GetYaw returns number
+        return yaw
+    end
+
+    action GetPitch returns number
+        return pitch
+    end
+
+    action GetRoll returns number
+        return roll
+    end
+
+    action SetSensitivityX(number x)
+        sensitivityX = x
+    end
+
+    action SetSensitivityY(number y)
+        sensitivityY = y
+    end
+
+    action GetSensitivityX returns number
+        return sensitivityX
+    end
+
+    action GetSensitivityY returns number
+        return sensitivityY
+    end
+
+    action SetPosition(number x, number y, number z)
+        camera:SetPosition(x, y, z)
+    end
+
+    action SetYawPitchRoll(number y, number p, number r)
+        if p > 90.0
+            p = 90.0
+        elseif p < -90.0
+            p = -90.0
+        end
+
+        yaw = y
+        pitch = p
+        roll = r
+        camera:SetYawPitchRoll(yaw, pitch, roll)
+    end
+end

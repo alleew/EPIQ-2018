@@ -1,0 +1,274 @@
+use Libraries.Containers.Array
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.Graphics.Texture
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Events.FocusEvent
+
+class Tile is Drawable
+
+    public constant integer FLOOR = 0
+    public constant integer BASE = 1
+    public constant integer ABYSS = 2
+    
+    constant integer typesSize = ABYSS + 1
+
+    Array<text> typeText
+
+    integer type = FLOOR
+
+    integer xIndex = -1
+    integer yIndex = -1
+
+    Grid grid = undefined
+
+    // The Entity on this tile, if there is one.
+    Entity entity = undefined
+
+    // Used for pathfinding.
+    Array<Tile> path
+
+    on create
+        SetInputGroup("Tile")
+        SetFocusable(true)
+        SetAccessibilityCode(parent:Item:CUSTOM)
+
+        typeText:SetSize(typesSize)
+        typeText:Set(FLOOR, "Floor")
+        typeText:Set(BASE, "Base")
+        typeText:Set(ABYSS, "Abyss")
+    end
+
+    action Load(integer type, number squareLength, Texture texture, Color color)
+        SetType(type)
+        Load(texture)
+        SetColor(color)
+        SetSize(squareLength, squareLength)
+    end
+
+    action GetName returns text
+        return GetXIndex() + " " + GetYIndex()
+    end
+
+    action GetDescription returns text
+        text entityText = "Empty"
+        text postText = ""
+        if HasEntity()
+            entityText = entity:GetName()
+            postText = ". Press space for " + entityText + " details."
+        end
+        return entityText + " " + typeText:Get(GetType()) + postText
+    end
+
+    action SetIndices(integer x, integer y)
+        xIndex = x
+        yIndex = y
+    end
+
+    action GetXIndex returns integer
+        return xIndex
+    end
+
+    action GetYIndex returns integer
+        return yIndex
+    end
+
+    action SetGrid(Grid g)
+        grid = g
+    end
+
+    action GetGrid returns Grid
+        return grid
+    end
+
+    action SetType(integer value)
+        type = value
+        SetName(typeText:Get(type))
+    end
+
+    action GetType returns integer
+        return type
+    end
+
+    action HasEntity returns boolean
+        return entity not= undefined
+    end
+
+    action SetEntity(Entity e)
+        if entity not= undefined
+            Remove(entity)
+        end
+
+        entity = e
+
+        if entity not= undefined
+            Add(entity)
+            OnMoveThrough(entity)
+        end
+    end
+
+    action GetEntity returns Entity
+        return entity
+    end
+
+    action GetPath returns Array<Tile>
+        return path
+    end
+
+    action IsTraversable(boolean flight) returns boolean
+        // Can be modified for additional floor types/creatures.
+        // Must be modified for obstacle entities in the future.
+        if flight
+            return true
+        else
+            return type not= ABYSS
+        end
+    end
+
+    action FindPathToBase(boolean flight) returns Array<Tile>
+
+        path:Add(me)
+        Array<Tile> chosenPath = undefined
+        Array<Array<Tile>> viablePaths
+        Array<Tile> toInspect = InspectAdjacentTiles(flight)
+
+        repeat while chosenPath = undefined and not (toInspect:IsEmpty())
+
+            Array<Tile> newAdditions
+            integer counter = 0
+            repeat while counter < toInspect:GetSize()
+                Tile current = toInspect:Get(counter)
+                if current:GetType() = current:BASE
+                    viablePaths:Add(current:GetPath())
+                else
+                    Array<Tile> inspected = current:InspectAdjacentTiles(flight)
+                    CopyFromArray(inspected, newAdditions)
+                end
+                counter = counter + 1
+            end
+            toInspect:Empty()
+            CopyFromArray(newAdditions, toInspect)
+            
+            counter = 0
+            integer entitiesInPath = counter:GetMaximumValue()
+            repeat while counter < viablePaths:GetSize()
+                Array<Tile> currentPath = viablePaths:Get(counter)
+                integer entities = EntitiesInPath(currentPath)
+                if chosenPath = undefined
+                    chosenPath = currentPath
+                    entitiesInPath = entities
+                elseif chosenPath:GetSize() > currentPath:GetSize()
+                    chosenPath = currentPath
+                    entitiesInPath = entities
+                elseif chosenPath:GetSize() = currentPath:GetSize() and entities < entitiesInPath
+                    chosenPath = currentPath
+                    entitiesInPath = entities
+                end
+                counter = counter + 1
+            end
+        end
+
+        return chosenPath
+    end
+
+    private action InspectAdjacentTiles(boolean flight) returns Array<Tile>
+        Array<Tile> inspected
+
+        Tile down = grid:Get(xIndex, yIndex - 1)
+        Tile left = grid:Get(xIndex - 1, yIndex)
+        Tile right = grid:Get(xIndex + 1, yIndex)
+        Tile up = grid:Get(xIndex, yIndex + 1)
+
+        Array<Tile> tempPath = undefined
+
+        if down not= undefined and down:IsTraversable(flight)
+            tempPath = down:GetPath()
+            if tempPath:IsEmpty()
+                CopyFromArray(path, tempPath)
+                tempPath:Add(down)
+                inspected:Add(down)
+            end
+        end
+
+        if left not= undefined and left:IsTraversable(flight)
+            tempPath = left:GetPath()
+            if tempPath:IsEmpty()
+                CopyFromArray(path, tempPath)
+                tempPath:Add(left)
+                inspected:Add(left)
+            end
+        end
+
+        if right not= undefined and right:IsTraversable(flight)
+            tempPath = right:GetPath()
+            if tempPath:IsEmpty()
+                CopyFromArray(path, tempPath)
+                tempPath:Add(right)
+                inspected:Add(right)
+            end
+        end
+
+        if up not= undefined and up:IsTraversable(flight)
+            tempPath = up:GetPath()
+            if tempPath:IsEmpty()
+                CopyFromArray(path, tempPath)
+                tempPath:Add(up)
+                inspected:Add(up)
+            end
+        end
+
+        return inspected
+    end
+
+    private action CopyFromArray(Array<Tile> from, Array<Tile> to)
+        integer counter = 0
+        repeat while counter < from:GetSize()
+            to:Add(from:Get(counter))
+            counter = counter + 1
+        end
+    end
+
+    private action EntitiesInPath(Array<Tile> path) returns integer
+        integer counter = 0
+        integer entities = 0
+        repeat while counter < path:GetSize()
+            Tile tile = path:Get(counter)
+            if tile:HasEntity()
+                entities = entities + 1
+            end
+            counter = counter + 1
+        end
+        return entities
+    end
+
+    action GetTilePath returns Array<Tile>
+        return path
+    end
+
+    action ResetTilePath
+        path:Empty()
+    end
+
+    action OnMoveThrough(Entity entity)
+        if entity:GetType() = entity:ENEMY
+            if type = BASE
+                entity:Destroy()
+                // Apply visual effect on base
+                // Damage player
+            elseif type = ABYSS
+                entity:Fall()
+            end
+        end
+    end
+
+    action GetNextFocus returns Item
+        return GetGrid():GetNextTile(me)
+    end
+
+    action GetPreviousFocus returns Item
+        return GetGrid():GetPreviousTile(me)
+    end
+
+    action GainedFocus(FocusEvent event)
+        GetGrid():RequestFocusHighlight(me)
+    end
+end

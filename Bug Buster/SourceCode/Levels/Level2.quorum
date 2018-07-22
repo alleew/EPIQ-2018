@@ -1,0 +1,48 @@
+use Libraries.Containers.Array
+use Libraries.Game.Graphics.Texture
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.Graphics.Gradient
+use Libraries.System.File
+use Libraries.Game.Graphics.Skybox
+
+class Level2 is Level
+    action Initialize
+        Array<Array<Tile>> tiles = parent:Level:tiles
+        SetSquareLength(80)
+        LoadTiles(GetLevelFile())
+
+        Skybox skybox = GetSkybox()
+        skybox:Load("Assets/Skyboxes/Red/Right.png", "Assets/Skyboxes/Red/Left.png", "Assets/Skyboxes/Red/Top.png",
+            "Assets/Skyboxes/Red/Bottom.png", "Assets/Skyboxes/Red/Front.png", "Assets/Skyboxes/Red/Back.png")
+
+        SetStartIndices(4, 0)
+
+        AddCrawler(1, 4)
+        AddCrawler(3, 4)
+
+//        Entity crawler1 = CreateCrawler()
+//        NewEntityBehavior addEgg1
+//        addEgg1:SetEntity(CreateEgg(crawler1))
+//        addEgg1:SetPosition(0, 5)
+//        AddTurnBehavior(0, addEgg1)
+//
+//        Entity crawler2 = CreateCrawler()
+//        NewEntityBehavior addEgg2
+//        addEgg2:SetEntity(CreateEgg(crawler2))
+//        addEgg2:SetPosition(4, 5)
+//        AddTurnBehavior(0, addEgg2)
+//
+//        Entity crawler3 = CreateCrawler()
+//        NewEntityBehavior addEgg3
+//        addEgg3:SetEntity(CreateEgg(crawler3))
+//        addEgg3:SetPosition(2, 2)
+//        AddTurnBehavior(1, addEgg3)
+    end
+
+    action GetLevelFile returns File
+        File file
+        file:SetPath("Assets/Levels/level2.json")
+        return file
+    end
+end

@@ -1,0 +1,21 @@
+use Libraries.Game.Graphics.Model
+
+class PoolItem is Model
+
+    text type = ""
+
+    on create
+        SetName("Pool Item")
+        SetDescription("Missing Description")
+        SetFocusable(true)
+        SetAccessibilityCode(parent:Item:CUSTOM)
+    end
+
+    action SetType(text t)
+        type = t
+    end
+
+    action GetType returns text
+        return type
+    end
+end

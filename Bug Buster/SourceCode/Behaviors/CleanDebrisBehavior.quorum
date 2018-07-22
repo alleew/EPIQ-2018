@@ -1,0 +1,31 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Item
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.GameStateManager
+
+class CleanDebrisBehavior is Behavior
+
+    Drawable drawable = undefined
+
+    action Run(BehaviorEvent event)
+        Item item = event:GetItem()
+        if item is Drawable
+            drawable = cast(Drawable, item)
+        end
+    end
+
+    action Dispose
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        main:MarkForRemoval(drawable)
+    end
+
+    action IsFinished returns boolean
+        if drawable = undefined
+            return true
+        else
+            return drawable:GetGlobalY() < -100
+        end
+    end
+end

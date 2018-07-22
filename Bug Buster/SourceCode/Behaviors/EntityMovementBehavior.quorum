@@ -1,0 +1,92 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Item
+use Libraries.Sound.Audio
+use Libraries.Compute.Random
+
+class EntityMovementBehavior is Behavior
+
+    Entity entity = undefined
+    GameplayInfo info
+    Audio audio
+
+    // Put in a delay to prevent all entities moving at once.
+    number timer = 0
+    number limit = 1
+
+    integer x = -1
+    integer y = -1
+
+    action SetEntity(Entity e)
+        entity = e
+    end
+
+    action GetEntity returns Entity
+        return entity
+    end
+
+    action GetDestinationX returns integer
+        return x
+    end
+
+    action GetDestinationY returns integer
+        return y
+    end
+
+    action SetDestination(integer x, integer y)
+        me:x = x
+        me:y = y
+    end
+
+    action SetLimit(number value)
+        limit = value
+    end
+
+    action GetLimit returns number
+        return limit
+    end
+
+    action Run(BehaviorEvent event)
+        // Begin playing audio.
+        // Report accessibility info.
+        Grid grid = entity:GetGrid()
+        Tile tile = entity:GetTile()
+        if tile not= undefined
+            tile:SetEntity(undefined)
+        end
+
+        Random random
+        integer audioChoice = random:RandomIntegerBetween(1, 4)
+        text path = "Assets/Audio/RoboMove" + audioChoice + ".wav"
+        audio:Load(path)
+        audio:Play()
+
+        tile = grid:Get(x, y)
+        tile:SetEntity(entity)
+
+        info:Set(entity:GetName(), "Moved to " + x + " " + y)
+
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        main:Add(info)
+        info:Focus()
+    end
+
+    action Update(number seconds)
+        timer = timer + seconds
+    end
+
+    action IsFinished returns boolean
+        return timer >= limit
+    end
+
+    action Dispose
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        main:Remove(info)
+
+        audio:Stop()
+        audio:Dispose()
+    end
+end

@@ -1,0 +1,42 @@
+use Libraries.Interface.Item2D
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Layouts.Layout
+
+class TechniqueLayout is Layout
+
+    on create
+        SetPercentageX(0)
+        SetPercentageY(0)
+        SetPercentageWidth(1)
+        SetPercentageHeight(1)
+    end
+
+    action Layout(Item2D item)
+        if item is Technique
+            Technique technique = cast(Technique, item)
+            number width = item:GetWidth() - 20
+            Label header = technique:GetHeaderLabel()
+            Label description = technique:GetDescriptionLabel()
+            Label aoe = technique:GetAreaOfEffectLabel()
+            Label damage = technique:GetDamageLabel()
+            Label effects = technique:GetEffectsLabel()
+
+            header:SetMaximumWidth(width - technique:GetIconDimensions())
+            description:SetMaximumWidth(width)
+            aoe:SetMaximumWidth(width)
+            damage:SetMaximumWidth(width)
+            effects:SetMaximumWidth(width)
+            header:SetText(header:GetText())
+            description:SetText(description:GetText())
+            aoe:SetText(aoe:GetText())
+            damage:SetText(damage:GetText())
+            effects:SetText(effects:GetText())
+
+            header:SetPosition(10, technique:GetHeight() - header:GetLineHeight())
+            description:SetPosition(10, technique:GetHeight() - header:GetLineHeight() - description:GetLineHeight() * 2)
+            aoe:SetPosition(10, description:GetY() - description:GetHeight() - aoe:GetLineHeight())
+            damage:SetPosition(10, aoe:GetY() - aoe:GetLineHeight())
+            effects:SetPosition(10, damage:GetY() - damage:GetLineHeight()) 
+        end
+    end
+end

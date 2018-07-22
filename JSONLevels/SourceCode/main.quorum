@@ -1,0 +1,18 @@
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Containers.Iterator
+use Libraries.Containers.HashTable
+use Libraries.System.File
+
+class Main 
+
+    action Main
+        Level1 level1
+        level1:Write()
+
+        Level2 level2
+        level2:Write()
+
+        output "Wrote JSON levels for the Bug Buster demo."
+    end
+
+end

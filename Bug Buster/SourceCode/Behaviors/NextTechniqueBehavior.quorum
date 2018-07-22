@@ -1,0 +1,20 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.TabPane
+use Libraries.Interface.Selections.TabPaneSelection
+
+class NextTechniqueBehavior is Behavior
+
+    TabPane tabPane = undefined
+
+    action SetTabPane(TabPane pane)
+        tabPane = pane
+    end
+
+    action Run(BehaviorEvent event)
+        TabPaneSelection selection = tabPane:GetSelection()
+        integer index = selection:GetIndex()
+        index = (index + 1) mod tabPane:GetSize()
+        tabPane:Select(index)
+    end
+end

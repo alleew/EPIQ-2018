@@ -1,0 +1,15 @@
+All graphical assets are in the public domain.
+
+Skyboxes from OpenGameArt.org by user StumpyTrust
+https://opengameart.org/content/space-skyboxes-0
+
+"Robot1.wav" through "Robot5.wav" are derived from "Droid Communications" by LiamG_SFX on Freesound. Used under Attribution License.
+https://freesound.org/people/LiamG_SFX/
+
+"RoboMove1.wav" through "RoboMove4.wav" derived from "Robotics" by OwlStorm on Freesound. Used under Creative Commons 0 licensing.
+https://freesound.org/people/OwlStorm/sounds/209017/
+
+"Medium Explosion.wav" by ryansnook on Freesound. Used under Attribution Noncommercial License.
+https://freesound.org/people/ryansnook/sounds/110113/
+
+"Small Explosion.wav" renamed from "Explosion 4" by fridobeck on Freesound. Used under Attribution Noncommercial License.

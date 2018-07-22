@@ -1,0 +1,32 @@
+use Libraries.Game.FocusManager
+use Libraries.Interface.Item
+use Libraries.Interface.AccessibilityManager
+use Libraries.Containers.Iterator
+use Libraries.Interface.Events.FocusListener
+use Libraries.Game.GameStateManager
+
+class PoolFocusManager is FocusManager
+    
+    Main main = undefined
+    GameStateManager manager
+
+    action SetMain(Main main)
+        me:main = main
+    end
+
+    action GetMain returns Main
+        return main
+    end
+
+    action FocusNextItem
+        SetFocus(main:TabSelectionForward())
+        if GetFocus() not= undefined
+//            output GetFocus():GetName()
+        end
+    end
+
+    action FocusPreviousItem
+        SetFocus(main:TabSelectionBackward())
+    end
+
+end

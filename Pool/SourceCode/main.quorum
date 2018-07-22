@@ -1,0 +1,837 @@
+use Libraries.Game.Game
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.Camera
+use Libraries.Game.Graphics.AmbientLight
+use Libraries.Game.Graphics.DirectionalLight
+use Libraries.Game.Graphics.PointLight
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Events.KeyboardListener
+use Libraries.Compute.Vector3
+use Libraries.Containers.Array
+use Libraries.Game.Layer3D
+use Libraries.Interface.Item3D
+use Libraries.Game.Graphics.Skybox
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Events.MouseMovementListener
+use Libraries.Interface.Events.CollisionEvent3D
+use Libraries.Interface.Events.CollisionListener3D
+use Libraries.Sound.Audio
+use Libraries.Compute.Random
+use Libraries.Sound.Speech
+use Libraries.Compute.Math
+use Libraries.Containers.Support.SortableContainer
+use Libraries.Game.ScreenResolution
+use Libraries.Game.InputMonitor
+use Libraries.Compute.Vector2
+use Libraries.Interface.AccessibilityManager
+
+class Main is Game, KeyboardListener, CollisionListener3D
+
+    public constant integer SOLIDS = 1
+    public constant integer STRIPES = 2
+    public constant integer EIGHT = 8
+
+    public constant integer MAX_AUDIO = 30
+    public constant number WAIT_TIME = 5.0
+
+    Color color
+    PoolItem table
+    PoolItem cueBall
+
+    CameraController cameraController = undefined
+    number yaw = -90
+    number pitch = -70
+
+    Color wallColor = color:CustomColor(0.1, 0.5, 0.1, 1)
+    Color outerWallColor = color:CustomColor(0.05, 0.4, 0.05, 1)
+
+    PoolItem ball1
+    PoolItem ball2
+    PoolItem ball3
+    PoolItem ball4
+    PoolItem ball5
+    PoolItem ball6
+    PoolItem ball7
+    PoolItem ball8
+    PoolItem ball9
+    PoolItem ball10
+    PoolItem ball11
+    PoolItem ball12
+    PoolItem ball13
+    PoolItem ball14
+    PoolItem ball15
+
+    PoolItem darkness
+
+    PoolItem arrow = undefined
+    Item3D arrowController
+
+    PoolItem scoreArea
+    PoolItem bounds
+
+    number timer = 0
+    boolean timerActive = false
+
+    Array<PoolItem> ballArray
+    Array<Vector3> ballPositions
+    Array<PoolItem> outOfBoundsBalls
+
+    Array<Audio> playingAudio
+
+    number arrowDirection = 0
+    number forceMultiplier = 1.0
+    number multiplierDirection = 0
+
+    Speech speech
+    text queuedSpeech = ""
+    Array<PoolItem> accessibleItems
+    Array<SortableContainer<number, Item3D>> nearItems
+    Array<Item3D> newAdditions
+    Array<Item3D> newDeletions
+    integer nearItemIndex = -1
+    PoolItem nearItemSelection
+
+    Math math
+    InputMonitor monitor
+    Audio music
+
+    action Main
+        ScreenResolution resolution = GetDesktopResolution()
+        SetScreenSize(resolution:GetWidth(), resolution:GetHeight())
+//        UseDesktopResolution()
+        StartGame()
+    end
+
+    action CreateGame
+        PoolFocusManager manager
+        SetFocusManager(manager)
+        manager:SetMain(me)
+
+        AddKeyboardListener(me)
+        AddCollisionListener(me)
+
+        GetCamera3D():SetNear(0.1)
+
+        CameraController controller
+        cameraController = controller
+        cameraController:SetSensitivityX(1.0 / GetScreenWidth() * 360)
+        cameraController:SetSensitivityY(1.0 / GetScreenHeight() * 360)
+        cameraController:SetCamera(GetCamera3D())
+        cameraController:SetPosition(6, 15, 0)
+        cameraController:SetYawPitchRoll(-90, -70, 0) 
+        AddLayer(cameraController)
+        AddKeyboardListener(cameraController)
+
+        Skybox skybox
+        skybox:Load("assets/skybox2/1.png", "assets/skybox2/3.png", "assets/skybox2/5.png", "assets/skybox2/6.png", "assets/skybox2/4.png", "assets/skybox2/2.png")
+        SetSkybox(skybox)
+
+        EnablePhysics3D(true)
+        SetGravity3D(0, -10, 0)
+
+        Layer3D layer = GetCurrentLayer3D()
+
+        table:LoadBox(10, 3.5, 20, color:CustomColor(0.2, 0.65, 0.2, 1))
+        table:SetY(-2)
+        Add(table)
+        table:EnablePhysics(true)
+        table:SetUnmovable()
+        table:SetFriction(0.25)
+        table:SetType("table")
+
+        darkness:LoadBox(14, 1, 24, color:Black())
+        darkness:SetY(-4.25)
+        Add(darkness)
+
+        scoreArea:SetDimensions(14, 1, 24)
+        scoreArea:SetY(-5.25)
+        scoreArea:SetCollidable(true)
+        scoreArea:SetType("scoreArea")
+        Add(scoreArea)
+
+        bounds:SetDimensions(20, 20, 30)
+        bounds:SetCollidable(true)
+        bounds:SetType("bounds")
+        Add(bounds)
+
+        AmbientLight ambience
+        ambience:SetColor(0.25, 0.25, 0.15, 1)
+        SetAmbientLight(ambience)
+
+        DirectionalLight directionalLight1
+        directionalLight1:SetColor(1, 1, 0.9, 1)
+        directionalLight1:SetDirection(1, -1, 1)
+        Add(directionalLight1)
+
+        DirectionalLight directionalLight2
+        directionalLight2:SetColor(0.4, 0.4, 0.15, 1)
+        directionalLight2:SetDirection(-1, -1, -1)
+        Add(directionalLight2)
+
+        PointLight pointLight
+        pointLight:SetColor(1, 1, 1, 1)
+        pointLight:SetPosition(0, 10, 20)
+        pointLight:SetIntensity(40)
+        Add(pointLight)
+
+        CreateWall(undefined, 0, -10.5, 12, 1)
+        CreateWall(undefined, 0, 10.5, 12, 1)
+        CreateWall(undefined, -5.5, -4.625, 1, 7.75)
+        CreateWall(undefined, -5.5, 4.625, 1, 7.75)
+        CreateWall(undefined, 5.5, -4.625, 1, 7.75)
+        CreateWall(undefined, 5.5, 4.625, 1, 7.75)
+        CreateOuterWall(undefined, 0, -11.5, 12, 1)
+        CreateOuterWall(undefined, 0, 11.5, 12, 1)
+        CreateOuterWall(undefined, -6.5, 0, 1, 24)
+        CreateOuterWall(undefined, 6.5, 0, 1, 24)
+
+        CreateBall(cueBall, 0, -6, color:White())
+        cueBall:SetType("cueball")
+        CreateBall(ball1, 0, 4, 1, SOLIDS)
+        CreateBall(ball9, -0.525/2.0, 8.88/2.0, 9, STRIPES)
+        CreateBall(ball10, 0.525/2.0, 8.88/2.0, 10, STRIPES)
+        CreateBall(ball4, -1.05/2.0, 9.76/2.0, 4, SOLIDS)
+        CreateBall(ball8, 0, 9.76/2.0, 8, EIGHT)
+        CreateBall(ball6, 1.05/2.0, 9.76/2.0, 6, SOLIDS)
+        CreateBall(ball11, -1.575/2.0, 10.64/2.0, 11, STRIPES)
+        CreateBall(ball2, -0.525/2.0, 10.64/2.0, 2, SOLIDS)
+        CreateBall(ball3, 0.525/2.0, 10.64/2.0, 3, SOLIDS)
+        CreateBall(ball12, 1.575/2.0, 10.64/2.0, 12, STRIPES)
+        CreateBall(ball13, -2.10/2.0, 11.52/2.0, 13, STRIPES)
+        CreateBall(ball5, -1.05/2.0, 11.52/2.0, 5, SOLIDS)
+        CreateBall(ball14, 0, 11.52/2.0, 14, STRIPES)
+        CreateBall(ball7, 1.05/2.0, 11.52/2.0, 7, SOLIDS)
+        CreateBall(ball15, 2.10/2.0, 11.52/2.0, 15, STRIPES)
+
+        ResetArrowController()
+        Add(arrowController)
+
+        music:LoadToStream("sounds/I Knew a Guy.ogg")
+        music:SetVolume(0.5)
+        music:EnableLooping()
+        music:Play()
+
+        nearItemSelection:LoadSphere(0.6, 0.6, 0.6, color:CustomColor(1, 1, 1, 0.8))
+        nearItemSelection:Hide()
+        Add(nearItemSelection)
+
+        InitializeAccessibleItems()
+    end
+
+    action InitializeAccessibleItems
+        accessibleItems:Empty()
+
+        integer counter = 0
+        repeat while counter < ballArray:GetSize()
+            PoolItem ball = ballArray:Get(counter)
+            if ball not= cueBall
+                accessibleItems:Add(ballArray:Get(counter))
+            end
+            counter = counter + 1
+        end
+
+        PoolItem topLeftPocket
+        topLeftPocket:SetDimensions(1.5, 1.5, 1.5)
+        topLeftPocket:SetPosition(-5.5, 0, -9.25)
+        topLeftPocket:SetType("pocket")
+        topLeftPocket:SetName("Top-Left Pocket")
+
+        PoolItem bottomLeftPocket
+        bottomLeftPocket:SetDimensions(1.5, 1.5, 1.5)
+        bottomLeftPocket:SetPosition(5.5, 0, -9.25)
+        bottomLeftPocket:SetType("pocket")
+        bottomLeftPocket:SetName("Bottom-Left Pocket")
+
+        PoolItem topCenterPocket
+        topCenterPocket:SetDimensions(1.5, 1.5, 1.5)
+        topCenterPocket:SetPosition(-5.5, 0, 0)
+        topCenterPocket:SetType("pocket")
+        topCenterPocket:SetName("Top-Center Pocket")
+
+        PoolItem bottomCenterPocket
+        bottomCenterPocket:SetDimensions(1.5, 1.5, 1.5)
+        bottomCenterPocket:SetPosition(5.5, 0, 0)
+        bottomCenterPocket:SetType("pocket")
+        bottomCenterPocket:SetName("Bottom-Center Pocket")
+
+        PoolItem topRightPocket
+        topRightPocket:SetDimensions(1.5, 1.5, 1.5)
+        topRightPocket:SetPosition(-5.5, 0, 9.25)
+        topRightPocket:SetType("pocket")
+        topRightPocket:SetName("Top-Right Pocket")
+
+        PoolItem bottomRightPocket
+        bottomRightPocket:SetDimensions(1.5, 1.5, 1.5)
+        bottomRightPocket:SetPosition(5.5, 0, 9.25)
+        bottomRightPocket:SetType("pocket")
+        bottomRightPocket:SetName("Bottom-Right Pocket")
+
+        accessibleItems:Add(topLeftPocket)
+        accessibleItems:Add(bottomLeftPocket)
+        accessibleItems:Add(topCenterPocket)
+        accessibleItems:Add(bottomCenterPocket)
+        accessibleItems:Add(topRightPocket)
+        accessibleItems:Add(bottomRightPocket)
+
+        AccessibilityManager manager = GetAccessibilityManager()
+        if manager not= undefined
+            manager:Add(topLeftPocket)
+            manager:Add(bottomLeftPocket)
+            manager:Add(topCenterPocket)
+            manager:Add(bottomCenterPocket)
+            manager:Add(topRightPocket)
+            manager:Add(bottomRightPocket)
+        end
+    end
+
+    action ResetArrowController
+        if arrow not= undefined
+            arrowController:Remove(arrow)
+        end
+        PoolItem newArrow
+        arrow = newArrow
+        arrow:LoadBox(0.1, 0.1, 1, color:Maroon())
+        arrow:SetPosition(0, 0, 1)
+        arrowController:Add(arrow)
+        arrowController:SetPosition(cueBall:GetPosition():Copy())
+        forceMultiplier = 1.0
+
+        SaySpeech()
+    end
+
+    action SaySpeech
+        if queuedSpeech not= ""
+            speech:Say(queuedSpeech, false)
+            queuedSpeech = ""
+        end
+    end
+
+    action CreateBall(PoolItem ball, number x, number z, Color color)
+        ball:LoadSphere(0.5, 0.5, 0.5, color)
+        ball:EnablePhysics(true)
+        ball:SetPosition(x, 0, z)
+        ball:SetResponsive()
+        ball:SetRestitution(0.25)
+        ball:SetLinearDamping(0.4)
+        ball:SetAngularDamping(0.2)
+        ball:SetFriction(0.25)
+        Add(ball)
+        ballArray:Add(ball)
+        ball:SetType("cueball")
+        ball:SetName("Cue Ball")
+    end
+
+    action CreateBall(PoolItem ball, number x, number z, integer ballNumber, integer type)
+        text path = "assets/" + ballNumber + "ball.png"
+        ball:LoadSphere(0.5, 0.5, 0.5, path)
+        Random random
+        ball:Rotate(random:RandomNumber(), random:RandomNumber(), random:RandomNumber(), random:RandomNumber() * 360)
+        ball:EnablePhysics(true)
+        ball:SetPosition(x, 0, z)
+        ball:SetResponsive()
+        ball:SetRestitution(0.25)
+        ball:SetLinearDamping(0.4)
+        ball:SetAngularDamping(0.2)
+        ball:SetFriction(0.25)
+        Add(ball)
+        ballArray:Add(ball)
+        text typeName = " Ball"
+        if type = SOLIDS
+            typeName = " Solid"
+        elseif type = STRIPES
+            typeName = " Stripe"
+        end
+
+        ball:SetType("ball")
+        ball:SetName(ballNumber + typeName)
+    end
+
+    action CreateWall(PoolItem wall, number x, number z, number width, number depth)
+        if wall = undefined
+            PoolItem new
+            wall = new
+        end
+        wall:LoadBox(width, 2, depth, wallColor)
+        wall:EnablePhysics(true)
+        wall:SetUnmovable()
+        wall:SetPosition(x, -1.5/2.0, z)
+        wall:SetFriction(1)
+        Add(wall)
+        wall:SetType("wall")
+    end
+
+    action CreateOuterWall(PoolItem wall, number x, number z, number width, number depth)
+        if wall = undefined
+            PoolItem new
+            wall = new
+        end
+        wall:LoadBox(width, 4, depth, outerWallColor)
+        wall:EnablePhysics(true)
+        wall:SetUnmovable()
+        wall:SetPosition(x, -1.75, z)
+        wall:SetFriction(1)
+        Add(wall)
+        wall:SetType("wall")
+    end
+
+    action Update(number seconds)
+        if timerActive
+            timer = timer + seconds
+            if timer >= WAIT_TIME and not BallsActive()
+                timerActive = false
+                timer = 0
+                repeat while not outOfBoundsBalls:IsEmpty()
+                    PoolItem ball = outOfBoundsBalls:RemoveFromEnd()
+                    if ball not= undefined and ball:GetType() = cueBall:GetType()
+                        integer index = 0
+                        Remove(cueBall)
+                        index = ballArray:GetFirstLocation(ball)
+                        PoolItem newBall
+                        Vector3 position = ballPositions:Get(index):Copy()
+                        
+                        newBall:LoadSphere(0.5, 0.5, 0.5, color:White())
+                        newBall:EnablePhysics(true)
+                        newBall:SetPosition(position:GetX(), 0, position:GetZ())
+                        newBall:SetResponsive()
+                        newBall:SetRestitution(0.25)
+                        newBall:SetLinearDamping(0.4)
+                        newBall:SetAngularDamping(0.2)
+                        newBall:SetFriction(0.25)
+                        Add(newBall)
+                        newBall:SetType("cueball")
+                        newBall:SetName("Cue Ball")
+
+                        ballArray:Set(index, newBall)
+                        cueBall = newBall
+                    elseif ball not= undefined
+                        integer index = ballArray:GetFirstLocation(ball)
+                        ball:SetPosition(ballPositions:Get(index):Copy())
+                        ball:EnablePhysics(true)
+                        ball:Show()
+                    end
+                end
+                QueueSpeech("Beginning of new turn.")
+                ResetArrowController()
+            end
+        else
+            if arrowDirection not= 0
+                arrowController:Rotate(0, 1, 0, arrowDirection * 45 * seconds)
+                GetNearItems(accessibleItems, newAdditions, newDeletions)
+                integer counter = 0
+                repeat while counter < newAdditions:GetSize()
+                    number distance = 1 - newAdditions:Get(counter):GetPosition():Distance(cueBall:GetPosition()) / 12
+                    if distance < 0.1
+                        distance = 0.1
+                    end
+                    PlaySound("sounds/click.wav", 1.0, distance)
+                    counter = counter + 1
+                end
+
+                counter = 0
+                repeat while counter < newDeletions:GetSize()
+                    number distance = 1 - newDeletions:Get(counter):GetPosition():Distance(cueBall:GetPosition()) / 12
+                    if distance < 0.1
+                        distance = 0.01
+                    end
+                    PlaySound("sounds/click.wav", 0.6, distance)
+                    counter = counter + 1
+                end
+            end
+
+            if multiplierDirection = 0
+                // Do nothing.
+            elseif forceMultiplier * (1 + multiplierDirection * seconds) > 2.0
+                if forceMultiplier < 2.0
+                    number temp = 2.0 / forceMultiplier
+                    forceMultiplier = 2.0
+                    arrow:Scale(temp, temp, temp)
+                end
+            elseif forceMultiplier * (1 + multiplierDirection * seconds) < 0.5
+                if forceMultiplier > 0.5
+                    number temp = 0.5 / forceMultiplier
+                    forceMultiplier = forceMultiplier * temp
+                    arrow:Scale(temp, temp, temp)
+                end
+            else
+                number temp = 1 + multiplierDirection * seconds
+                forceMultiplier = forceMultiplier * (1 + multiplierDirection * seconds)
+                arrow:Scale(temp, temp, temp)
+            end
+        end
+
+        music:Stream()
+    end
+
+    action BallsActive returns boolean
+        integer counter = 0
+        boolean active = false
+        repeat while counter < ballArray:GetSize()
+            PoolItem ball = ballArray:Get(counter)
+            if ball not= undefined
+                if ball:IsPhysicsEnabled() and ball:IsSimulated() and not IsBallOutOfBounds(ball)
+                    if ball:GetLinearVelocity():Length() < 0.1
+                        ball:GetLinearVelocity():SetZero()
+                        ball:GetAngularVelocity():SetZero()
+                    else
+                        active = true
+                    end
+                end
+            end
+            counter = counter + 1
+        end
+
+        return active
+    end
+
+    action PressedKey(KeyboardEvent event)
+        if event:keyCode = event:SPACE
+            ResetNearItemSelection()
+            SnapshotPositions()
+            outOfBoundsBalls:Empty()
+            timerActive = true
+            arrow:Hide()
+            cueBall:Simulate(true)
+            number force = 500 * forceMultiplier * forceMultiplier
+            Vector3 direction
+            direction:Set(arrow:GetGlobalPosition():Subtract(arrowController:GetGlobalPosition()))
+            direction:Normalize()
+            direction:Scale(force)
+            cueBall:ApplyForceToCenter(direction)
+        elseif event:keyCode = event:LEFT
+            arrowDirection = arrowDirection + 1
+//            arrowController:Rotate(0, 1, 0, 15)
+        elseif event:keyCode = event:RIGHT
+//            arrowController:Rotate(0, 1, 0, -15)
+            arrowDirection = arrowDirection - 1
+        elseif event:keyCode = event:UP
+            multiplierDirection = multiplierDirection + 1
+        elseif event:keyCode = event:DOWN
+            multiplierDirection = multiplierDirection - 1
+        elseif event:keyCode = event:BACKSPACE
+            timerActive = false
+            ResetArrowController()
+        elseif event:keyCode = event:ESCAPE
+            Exit()
+        elseif event:keyCode = event:ENTER
+            ResetNearItemSelection()
+            Array<SortableContainer<number, Item3D>> items = GetNearItems(accessibleItems, newAdditions, newDeletions)
+            if items:IsEmpty()
+                QueueSpeech("No items in path.")
+            else
+                integer counter = 0
+                repeat while counter < items:GetSize()
+                    text name = items:Get(counter):GetValue():GetName()
+                    number distance = math:Round(items:Get(counter):GetSorter(), 1)
+                    QueueSpeech(name + ", " + distance)
+                    counter = counter + 1
+                end
+            end
+            SaySpeech()
+//        elseif event:keyCode = event:TAB
+//            if monitor:IsKeyPressed(event:SHIFT_LEFT) or monitor:IsKeyPressed(event:SHIFT_RIGHT)
+//                TabSelectionBackward()
+//            else
+//                TabSelectionForward()
+//            end
+        elseif event:keyCode = event:CONTROL_LEFT or event:keyCode = event:CONTROL_RIGHT
+            speech:Say("Stopped.", false)
+        end
+    end
+
+    action ReleasedKey(KeyboardEvent event)
+        if event:keyCode = event:LEFT
+            arrowDirection = arrowDirection - 1
+        elseif event:keyCode = event:RIGHT
+            arrowDirection = arrowDirection + 1
+        elseif event:keyCode = event:UP
+            multiplierDirection = multiplierDirection - 1
+            QueueSpeech("Shot power at " + math:Round(forceMultiplier * 50, 1) + " percent.")
+            SaySpeech()
+        elseif event:keyCode = event:DOWN
+            multiplierDirection = multiplierDirection + 1
+            QueueSpeech("Shot power at " + math:Round(forceMultiplier * 50, 1) + " percent.")
+            SaySpeech()
+        end
+    end
+
+    action BeginCollision(CollisionEvent3D event)
+        PoolItem itemA = cast(PoolItem, event:GetItemA())
+        PoolItem itemB = cast(PoolItem, event:GetItemB())
+        text nameA = itemA:GetType()
+        text nameB = itemB:GetType()
+
+        if (nameA:Contains("wall") or nameB:Contains("wall")) and (nameA:Contains("ball") or nameB:Contains("ball"))
+            PlaySound("sounds/table-thump.wav")
+        elseif nameA:Contains("ball") and nameB:Contains("ball")
+            PlaySound("sounds/hit-soft.wav")
+        elseif (nameA:Contains("ball") or nameB:Contains("ball")) and (nameA = "scoreArea" or nameB = "scoreArea")
+            Item3D ball = event:GetItemA()
+            if nameB:Contains("ball")
+                ball = event:GetItemB()
+            end
+            if cast(PoolItem, ball) = cueBall
+                integer index = ballArray:GetFirstLocation(cast(PoolItem, ball))
+                if outOfBoundsBalls:GetSize() <= index
+                    outOfBoundsBalls:SetSize(index + 1)
+                end
+                outOfBoundsBalls:Set(index, cast(PoolItem, ball))
+            else
+                ball:EnablePhysics(false)
+                ball:Hide()
+            end
+            PlaySound("sounds/table-thump.wav", 0.5)
+            QueueSpeech(ball:GetName() + " " + GetNearestPocket(ball:GetX(), ball:GetZ()))
+        end
+    end
+
+    action QueueSpeech(text toQueue)
+        queuedSpeech = queuedSpeech + ", " + toQueue
+    end
+
+    action GetNearestPocket(number x, number z) returns text
+        if x > 0
+            if z < -5
+                return "Bottom-Left Pocket"
+            elseif z < 5
+                return "Bottom-Center Pocket"
+            else
+                return "Bottom-Right Pocket"
+            end
+        else
+            if z < -5
+                return "Top-Left Pocket"
+            elseif z < 5
+                return "Top-Center Pocket"
+            else
+                return "Top-Right Pocket"
+            end
+        end
+    end
+
+    action FinishCollision(CollisionEvent3D event)
+        PoolItem itemA = cast(PoolItem, event:GetItemA())
+        PoolItem itemB = cast(PoolItem, event:GetItemB())
+        text nameA = itemA:GetType()
+        text nameB = itemB:GetType() 
+
+        if (nameA:Contains("bounds") or nameB:Contains("bounds")) and (nameA:Contains("ball") or nameB:Contains("ball"))
+            Item3D ball = event:GetItemA()
+            if nameB:Contains("ball")
+                ball = event:GetItemB()
+            end
+            
+            integer index = ballArray:GetFirstLocation(cast(PoolItem, ball))
+            if outOfBoundsBalls:GetSize() <= index
+                outOfBoundsBalls:SetSize(index + 1)
+            end
+            outOfBoundsBalls:Set(index, cast(PoolItem, ball))
+        end
+    end
+
+    action IsBallOutOfBounds(PoolItem ball) returns boolean
+        integer counter = 0
+        repeat while counter < outOfBoundsBalls:GetSize()
+            if outOfBoundsBalls:Get(counter) not= undefined and ball:GetType() = outOfBoundsBalls:Get(counter):GetType()
+                return true
+            end
+            counter = counter + 1
+        end
+        return false
+    end
+
+    action PlaySound(text path)
+        PlaySound(path, 1.0)
+    end
+
+    action PlaySound(text path, number pitch)
+        DisposeOldAudio()
+        Audio newAudio
+        newAudio:Load(path)
+        newAudio:SetPitch(pitch)
+        newAudio:Play()
+        playingAudio:Add(newAudio)
+    end
+
+    action PlaySound(text path, number pitch, number volume)
+        DisposeOldAudio()
+        Audio newAudio
+        newAudio:Load(path)
+        newAudio:SetPitch(pitch)
+        newAudio:SetVolume(volume)
+        newAudio:Play()
+        playingAudio:Add(newAudio)
+    end
+
+    action DisposeOldAudio
+        integer counter = 0
+        repeat while counter < playingAudio:GetSize()
+            Audio audio = playingAudio:Get(counter)
+            if not audio:IsPlaying()
+                audio:Stop()
+                audio:Dispose()
+                playingAudio:RemoveAt(counter)
+            end
+            counter = counter + 1
+        end
+
+        repeat while playingAudio:GetSize() >= MAX_AUDIO
+            Audio oldAudio = playingAudio:RemoveFromFront()
+            oldAudio:Stop()
+            oldAudio:Dispose()
+        end
+    end
+
+    action SnapshotPositions
+        if ballPositions:GetSize() < ballArray:GetSize()
+            ballPositions:SetSize(ballArray:GetSize())
+        end
+
+        integer counter = 0
+        repeat while counter < ballArray:GetSize()
+            PoolItem ball = ballArray:Get(counter)
+            ballPositions:Set(counter, ball:GetPosition():Copy())
+            counter = counter + 1
+        end
+    end
+
+    /*
+    Assumes all items to test are perfect spheres. Testing is performed based on
+    items' widths.
+    */
+    action GetNearItems(Array<Item3D> array, Array<Item3D> newAdditions,
+        Array<Item3D> newDeletions) returns Array<SortableContainer<number, Item3D>>
+        
+        newAdditions:Empty()
+        newDeletions:Empty()
+        integer counter = 0
+        repeat while counter < nearItems:GetSize()
+            newDeletions:Add(nearItems:Get(counter):GetValue())
+            counter = counter + 1
+        end
+
+        nearItems:Empty()
+
+        Vector3 vector
+        vector:Set(arrow:GetGlobalPosition():Subtract(arrowController:GetGlobalPosition()))
+        vector:Normalize():Scale(2)
+
+        Vector3 back
+        back:Set(arrow:GetGlobalPosition():Subtract(arrowController:GetGlobalPosition()))
+        back:Scale(-1)
+        back:Add(arrowController:GetGlobalPosition())
+        
+        number x1 = arrowController:GetX()
+        number z1 = arrowController:GetZ()
+        number x2 = x1 + vector:GetX()
+        number z2 = z1 + vector:GetZ()
+
+        number offset = (x1 - x2) * z1 + (z2 - z1) * x1
+        number zMultiplier = (x2 - x1)
+        number xMultiplier = (z1 - z2)
+        number divisor = math:SquareRoot(xMultiplier * xMultiplier + zMultiplier * zMultiplier)
+
+        counter = 0
+        repeat while counter < array:GetSize()
+            Item3D item = array:Get(counter)
+            if not (item is PoolItem and IsBallOutOfBounds(cast(PoolItem, item)))
+                if (math:AbsoluteValue(xMultiplier * item:GetX() + zMultiplier * item:GetZ() + offset) / divisor <= item:GetWidth())
+                    number distance = item:GetPosition():Distance(cueBall:GetPosition())
+                    if item:GetPosition():Distance(back) > distance
+                        SortableContainer<number, Item3D> container
+                        container:Set(distance, item)
+                        nearItems:Add(container)
+                    end
+                end
+            end
+            counter = counter + 1
+        end
+
+        nearItems:Sort()
+
+        counter = 0
+        repeat while counter < nearItems:GetSize()
+            Item3D item = nearItems:Get(counter):GetValue()
+            if newDeletions:Has(item)
+                newDeletions:Remove(item)
+            else
+                newAdditions:Add(item)
+            end
+            counter = counter + 1
+        end
+
+        return nearItems
+    end
+
+    action ResetNearItemSelection()
+        nearItemIndex = -1
+        nearItemSelection:Hide()
+    end
+
+    action TabSelectionForward returns Item3D
+        if nearItems:IsEmpty()
+//            output "Returning undefined"
+            return undefined
+        end
+        
+        nearItemIndex = nearItemIndex + 1
+        if nearItemIndex >= nearItems:GetSize()
+            nearItemIndex = 0
+        end
+
+        Item3D item = SelectNearItem(nearItemIndex)
+//        output "Returning " + item:GetName() + ", " + item:GetDescription()
+        return item
+    end
+
+    action TabSelectionBackward returns Item3D
+        if nearItems:IsEmpty()
+            return undefined
+        end
+        
+        nearItemIndex = nearItemIndex - 1
+        if nearItemIndex < 0
+            nearItemIndex = nearItems:GetSize() - 1
+        end
+
+        return SelectNearItem(nearItemIndex)
+    end
+
+    action SelectNearItem(integer index) returns Item3D
+        Item3D item = nearItems:Get(index):GetValue()
+        nearItemSelection:SetPosition(item:GetPosition())
+        nearItemSelection:Show()
+        number angle = math:Round(CalculateAngle(item:GetX(), item:GetZ()), 2)
+        number distance = math:Round(nearItems:Get(index):GetSorter(), 1)
+        text angleSpeech = ""
+
+        if angle > 0
+            angleSpeech = angle + " degrees left of center."
+        elseif angle < 0
+            angle = -angle
+            angleSpeech = angle + " degrees right of center."
+        else
+            angleSpeech = " directly at center."
+        end
+
+        item:SetDescription(distance + " away, aiming " + angleSpeech)
+        SaySpeech()
+
+        return item
+    end
+
+    /*
+    Returns positive if aiming to the left of the ball, or negative if aiming to
+    the right.
+    */
+    action CalculateAngle(number c, number d) returns number
+        Vector3 vector
+        vector:Set(arrow:GetGlobalPosition():Subtract(arrowController:GetGlobalPosition())):Normalize()
+
+        Vector2 aimVector
+        aimVector:Set(vector:GetX(), vector:GetZ())
+        Vector2 ballVector
+        ballVector:Set(c - cueBall:GetX(), d - cueBall:GetZ()):Normalize()
+
+        return aimVector:Angle() - ballVector:Angle()
+    end
+end

@@ -1,0 +1,146 @@
+use Libraries.Interface.Item2D
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Drawable
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Layouts.Layout
+use Libraries.Interface.Behaviors.Behavior
+
+class Technique is Item2D
+//    Drawable icon
+    Label header
+    Label description
+    
+    Label areaOfEffect
+    Label damage
+    Label effects
+
+    Button confirm
+    Button cancel
+
+    integer headerSize = 20
+    integer fontSize = 12
+
+//    Layout headerLayout
+//    Layout descriptionLayout
+//    Layout aoeLayout
+//    Layout damageLayout
+//    Layout effectsLayout
+    Layout cancelLayout
+    Layout confirmLayout
+    TechniqueLayout techniqueLayout
+
+    on create
+        SetFocusable(true)
+        SetAccessibilityCode(parent:Item:CUSTOM)
+        SetInputGroup("Technique")
+    end
+
+    /*
+    Sets the text for the header and sets its font size.
+    */
+    action SetHeader(text headerText, integer size)
+        headerSize = size
+        header:SetSize(size)
+        header:SetText(headerText)
+        SetName(headerText)
+    end
+
+    /*
+    Sets the size of all fonts in the technique other than the header.
+    */
+    action SetFontSize(integer size)
+        fontSize = size
+        description:SetSize(size)
+        damage:SetSize(size)
+        areaOfEffect:SetSize(size)
+        effects:SetSize(size)
+    end
+
+    action SetDescription(text descriptionText)
+        description:SetText(descriptionText)
+        parent:Item2D:SetDescription(descriptionText)
+    end
+
+    action SetAreaOfEffect(text aoe)
+        areaOfEffect:SetText("AoE: " + aoe)
+    end
+
+    action SetDamage(text damageText)
+        damage:SetText("DAM: " + damageText)
+    end
+
+    action SetEffects(text effectsText)
+        effects:SetText("EFF: " + effectsText)
+    end
+
+    action GetHeaderLabel returns Label
+        return header
+    end
+
+    action GetDescriptionLabel returns Label
+        return description
+    end
+
+    action GetDamageLabel returns Label
+        return damage
+    end
+
+    action GetAreaOfEffectLabel returns Label
+        return areaOfEffect
+    end
+
+    action GetEffectsLabel returns Label
+        return effects
+    end
+
+    action GetIconDimensions returns integer
+        return 0
+    end
+
+    action SetupLayouts
+        header:SetSize(headerSize)
+        description:SetSize(fontSize)
+        areaOfEffect:SetSize(fontSize)
+        damage:SetSize(fontSize)
+        effects:SetSize(fontSize)
+
+        cancelLayout:SetPercentageX(0.1)
+        cancelLayout:SetOffsetY(20)
+        cancelLayout:SetPercentageWidth(0.35)
+        cancelLayout:SetHeightOffset(100)
+
+        confirmLayout:SetPercentageX(0.9)
+        confirmLayout:SetPercentageOriginX(1)
+        confirmLayout:SetOffsetY(20)
+        confirmLayout:SetPercentageWidth(0.35)
+        confirmLayout:SetHeightOffset(100)
+
+        confirm:AddLayout(confirmLayout)
+        cancel:AddLayout(cancelLayout)
+    end
+
+    action Initialize
+        SetupLayouts()
+        AddLayout(techniqueLayout)
+        confirm:Initialize(10, 10, "Confirm")
+        cancel:Initialize(10, 10, "Cancel")
+        Add(confirm)
+        Add(cancel)
+        Add(header)
+        Add(description)
+        Add(areaOfEffect)
+        Add(damage)
+        Add(effects)
+
+        CancelToMovementBehavior cancelBehavior
+        cancel:SetBehavior(cancelBehavior)
+    end
+
+    action SetConfirmBehavior(Behavior behavior)
+        confirm:SetBehavior(behavior)
+    end
+
+    action Confirm
+        confirm:Activate()
+    end
+end

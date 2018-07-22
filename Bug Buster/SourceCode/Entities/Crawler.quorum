@@ -1,0 +1,61 @@
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.GameStateManager
+use Libraries.Compute.Random
+use Libraries.Compute.Vector2
+
+class Crawler is Entity
+    action Destroy
+        CreateDebris("Assets/Crawler/Crawler Head.png", 50, 18)
+        CreateDebris("Assets/Crawler/Crawler Midsection.png", 50, 62)
+        CreateDebris("Assets/Crawler/Crawler Rear.png", 50, 91)
+        CreateDebris("Assets/Crawler/Crawler Rear Left Leg.png", 17, 96)
+        CreateDebris("Assets/Crawler/Crawler Rear Right Leg.png", 106, 96)
+        CreateDebris("Assets/Crawler/Crawler Middle Left Leg.png", 11, 69)
+        CreateDebris("Assets/Crawler/Crawler Middle Right Leg.png", 106, 69)
+        CreateDebris("Assets/Crawler/Crawler Front Left Leg.png", 17, 18)
+        CreateDebris("Assets/Crawler/Crawler Front Right Leg.png", 106, 18)
+
+        parent:Entity:Destroy()
+    end
+
+    private action CreateDebris(text file, number xOffset, number yOffset)
+        Random random
+
+        Grid grid = GetGrid()
+        Tile tile = GetTile()
+        integer x = GetXIndex()
+        integer y = GetYIndex()
+        
+        Drawable original = GetDrawable()
+
+        Drawable drawable
+        drawable:Load(file)
+        number ratio = original:GetWidth() / 160.0
+        drawable:SetSize(drawable:GetWidth() * ratio, drawable:GetHeight() * ratio)
+        drawable:SetPosition(tile:GetGlobalX() + (xOffset * ratio), tile:GetGlobalY() + (yOffset * ratio))
+        drawable:EnablePhysics(true)
+        drawable:SetFriction(1)
+        drawable:CanRotate(true)
+        drawable:SetResponsive()
+        drawable:SetMass(5)
+
+        boolean leftSpin = random:RandomBoolean()
+        number torqueMod = -1
+        if leftSpin
+            torqueMod = 1
+        end
+
+        Vector2 vector
+        vector:Set((random:RandomNumber() - 0.5) * 50000, 25000 + random:RandomNumber() * 45000)
+        drawable:ApplyForceToCenter(vector)
+        drawable:ApplyTorque(torqueMod * (random:RandomNumber() * 20000 + 10000))
+
+        CleanDebrisBehavior clean
+        drawable:AddBehavior(clean)
+
+        // Add a behavior to the head responsible for cleaning it up.
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        main:Add(drawable)
+    end
+end

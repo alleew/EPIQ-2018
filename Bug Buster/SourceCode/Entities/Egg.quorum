@@ -1,0 +1,31 @@
+use Libraries.Game.GameStateManager
+
+class Egg is Entity
+
+    Entity spawn = undefined
+
+    action SetSpawn(Entity entity)
+        spawn = entity
+    end
+
+    action GetSpawn returns Entity
+        return spawn
+    end
+
+    action OnTurnEnd
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        EggHatchingBehavior behavior
+        behavior:SetEgg(me)
+        main:AddBehavior(behavior)
+    end
+
+    action GetDescription returns text
+        text beginning = parent:Entity:GetDescription()
+        text post = ""
+        if spawn not= undefined
+            post = " Transforms into a " + spawn:GetName() + " at end of turn."
+        end
+        return beginning + post
+    end
+end

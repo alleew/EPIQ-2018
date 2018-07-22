@@ -1,0 +1,221 @@
+use Libraries.Containers.Array
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.Graphics.Skybox
+use Libraries.System.File
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.Texture
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Containers.Support.Pair
+use Libraries.Data.Formats.JavaScriptObjectNotation
+
+class Level 
+    
+    Array<Array<Tile>> tiles
+    Skybox skybox
+    number squareLength = 0
+    integer startX = 0
+    integer startY = 0
+    integer rows = 0
+    integer columns = 0
+    Array<Array<Behavior>> turnBehaviors
+    Array<Entity> startingEnemies
+    Array<Pair<integer>> startingEnemyPositions
+
+    blueprint action Initialize
+
+    blueprint action GetLevelFile returns File
+
+    action LoadTiles(File file)
+        JavaScriptObjectNotation json
+        json:Read(file)
+        rows = cast(integer, json:GetValue("rows"))
+        columns = cast(integer, json:GetValue("columns"))
+        
+        JavaScriptObjectNotation data
+        data:Read(json:GetValue("data"))
+
+        Color color
+        Texture floorTexture
+        floorTexture:LoadFromFile("Assets/Tiles/Floor.png")
+
+        Texture baseTexture
+        baseTexture:LoadFromFile("Assets/Tiles/Base.png")
+
+        Texture defaultTexture
+        defaultTexture:LoadFilledRectangle(1, 1, color:White())
+
+        JavaScriptObjectNotation columnJSON
+        integer column = 0
+        repeat while column < columns
+            integer row = 0
+            Array<Tile> columnArray
+            columnJSON = data:Get(column)
+            
+            repeat while row < rows
+                Tile tile
+                integer type = columnJSON:Get(row):GetInteger()
+                if type = tile:FLOOR
+                    color:SetColor(0.8, 0.8, 0.7, 1)
+                    tile:Load(type, GetSquareLength(), floorTexture, color)
+                elseif type = tile:BASE
+                    tile:Load(type, GetSquareLength(), baseTexture, color:White())
+                elseif type = tile:ABYSS
+                    color:SetColor(0.1, 0.1, 0.1, 0)
+                    tile:Load(type, GetSquareLength(), defaultTexture, color)
+                end
+                
+                columnArray:Add(tile)
+                row = row + 1
+            end
+            column = column + 1
+            tiles:Add(columnArray)
+        end
+    end
+
+    action GetTiles returns Array<Array<Tile>>
+        return tiles
+    end
+
+    action GetSkybox returns Skybox
+        return skybox
+    end
+
+    action GetWidth returns integer
+        // Return number of columns.
+        return tiles:GetSize()
+    end
+
+    action GetHeight returns integer
+        // All rows are the same size.
+        return tiles:Get(0):GetSize()
+    end
+
+    action SetSquareLength(number length)
+        squareLength = length
+    end
+
+    action GetSquareLength returns number
+        return squareLength
+    end
+
+    action SetStartIndices(integer x, integer y)
+        startX = x
+        startY = y
+    end
+
+    action GetStartX returns integer
+        return startX
+    end
+
+    action GetStartY returns integer
+        return startY
+    end
+
+    action GetRows returns integer
+        return rows
+    end
+
+    action GetColumns returns integer
+        return columns
+    end
+
+    action AddTurnBehavior(integer turn, Behavior behavior)
+        repeat while turn >= turnBehaviors:GetSize()
+            Array<Behavior> array
+            turnBehaviors:Add(array)
+        end
+
+        Array<Behavior> turnArray = turnBehaviors:Get(turn)
+        turnArray:Add(behavior)
+    end
+
+    action GetTurnBehaviors returns Array<Array<Behavior>>
+        return turnBehaviors
+    end
+
+    action CreateCrawler returns Entity
+        Crawler crawler
+//        Drawable orangeTriangle
+//        Color color
+//        orangeTriangle:LoadFilledTriangle(0, 80, 40, 0, 80, 80, color:Orange())
+//        crawler:SetDrawable(orangeTriangle)
+        Drawable drawable
+        drawable:Load("Assets/Crawler/Crawler.png")
+        Color color
+        drawable:SetColor(color:CustomColor(1, 1, 1, 1))
+        crawler:SetDrawable(drawable)
+        crawler:SetMaximumHP(2)
+        crawler:SetHP(2)
+        crawler:SetPushable(true)
+        crawler:SetMovement(1)
+        crawler:SetName("Crawler")
+        return crawler
+    end
+
+    action AddCrawler(integer x, integer y)
+        AddStartingEnemy(CreateCrawler(), x, y)
+    end
+
+    action CreateEgg(Entity spawn) returns Egg
+        Egg egg
+        Color color
+        Texture eggTexture
+        eggTexture:LoadFromFile("Assets/CyberEgg/CyberEgg.png")
+        Drawable cyberEgg
+        cyberEgg:Load(eggTexture)
+//        Drawable circle
+//        circle:LoadFilledCircle(cast(integer, GetSquareLength()/2), color:Maroon())
+        IdleAnimationBehavior idle
+        Array<Texture> frames
+        Texture frame1
+        Texture frame2
+        Texture frame3
+        Texture frame4
+        Texture frame5
+        Texture frame6
+        Texture frame7
+        frame1:LoadFromFile("Assets/CyberEgg/CyberEggFrame1.png")
+        frame2:LoadFromFile("Assets/CyberEgg/CyberEggFrame2.png")
+        frame3:LoadFromFile("Assets/CyberEgg/CyberEggFrame3.png")
+        frame4:LoadFromFile("Assets/CyberEgg/CyberEggFrame4.png")
+        frame5:LoadFromFile("Assets/CyberEgg/CyberEggFrame5.png")
+        frame6:LoadFromFile("Assets/CyberEgg/CyberEggFrame6.png")
+        frame7:LoadFromFile("Assets/CyberEgg/CyberEggFrame7.png")
+        frames:Add(frame1)
+        frames:Add(frame2)
+        frames:Add(frame3)
+        frames:Add(frame4)
+        frames:Add(frame5)
+        frames:Add(frame6)
+        frames:Add(frame7)
+
+        idle:SetTextures(eggTexture, frames)
+        cyberEgg:AddBehavior(idle)
+
+        egg:SetDrawable(cyberEgg)
+        egg:SetMaximumHP(0)
+        egg:SetPushable(true)
+        egg:SetSpawn(spawn)
+        egg:SetName("Egg")
+        return egg
+    end
+
+    action AddEgg(Entity spawn, integer x, integer y)
+        AddStartingEnemy(CreateEgg(spawn), x, y)
+    end
+
+    action AddStartingEnemy(Entity enemy, integer x, integer y)
+        startingEnemies:Add(enemy)
+        Pair<integer> pair
+        pair:Set(x, y)
+        startingEnemyPositions:Add(pair)
+    end
+
+    action GetStartingEnemies returns Array<Entity>
+        return startingEnemies
+    end
+
+    action GetStartingEnemyPositions returns Array<Pair>
+        return startingEnemyPositions
+    end
+end

@@ -1,0 +1,36 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Events.BehaviorEvent
+
+class ReportInformationBehavior is Behavior
+    
+    GameplayInfo info
+    number timer = 0
+    number limit = 2
+
+    action SetInfo(GameplayInfo gameplayInfo)
+        info = gameplayInfo
+    end
+
+    action Run(BehaviorEvent event)
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        main:Add(info)
+        info:Focus()
+    end
+
+    action Update(number seconds)
+        timer = timer + seconds
+    end
+
+    action IsFinished returns boolean
+        return timer >= limit
+    end
+
+    action Dispose
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        main:Remove(info)
+    end
+
+end

@@ -1,0 +1,359 @@
+use Libraries.Game.Game
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.InputTable
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Game.InputSet
+use Libraries.Interface.Item2D
+use Libraries.Interface.Controls.TabPane
+use Libraries.Interface.Layouts.Layout
+use Libraries.Interface.Controls.Tab
+use Libraries.Game.Graphics.Color
+use Libraries.Containers.Array
+use Libraries.Game.DesktopConfiguration
+use Libraries.Game.Graphics.Gradient
+use Libraries.Game.Layer2D
+use Libraries.Interface.Item
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Game.Graphics.Skybox
+
+class Main is Game
+
+    Player player
+    Item2D gridRegion
+    Grid grid = undefined
+    TabPane pane
+    Drawable paneBackground
+    Drawable paneBorder
+
+    Layer2D obstructionLayer = undefined
+    Drawable techniqueCover
+
+    Layout gridLayout
+    Layout regionLayout
+    Layout paneLayout
+    Layout backgroundLayout
+
+    Layout tabContentLayout
+    Layout tabBackgroundLayout
+
+    number paneWidthPercentage = 0.15
+    number squareLength = 80
+    Color color
+
+    Skybox skybox = undefined
+
+    BehaviorQueue behaviorQueue
+    // An array of items to remove during the next update.
+    // Used for special effects like explosions.
+    Array<Item2D> toRemove
+
+    integer currentLevel = 0
+
+    number enemyPhaseTimer = -1
+
+    action Main
+        DesktopConfiguration config = GetDesktopConfiguration()
+        config:resizable = true
+        StartGame()
+    end
+
+    action CreateGame
+        EnablePhysics2D(true)
+        SetGravity2D(0, -150)
+
+        KeyboardEvent keys
+        InputTable tileTable
+
+        InputSet leftArrow
+        InputSet rightArrow
+        InputSet upArrow
+        InputSet downArrow
+        leftArrow:SetKeyboardInput(keys:LEFT)
+        rightArrow:SetKeyboardInput(keys:RIGHT)
+        upArrow:SetKeyboardInput(keys:UP)
+        downArrow:SetKeyboardInput(keys:DOWN)
+
+        GridLeft gridLeft
+        GridRight gridRight
+        GridUp gridUp
+        GridDown gridDown
+
+        tileTable:Add(leftArrow, gridLeft)
+        tileTable:Add(rightArrow, gridRight)
+        tileTable:Add(upArrow, gridUp)
+        tileTable:Add(downArrow, gridDown)
+
+        TileActivateBehavior tileActivate
+        InputSet space
+        space:SetKeyboardInput(keys:SPACE)
+        InputSet enter
+        enter:SetKeyboardInput(keys:ENTER)
+        tileTable:Add(space, tileActivate)
+        tileTable:Add(enter, tileActivate)
+
+        tileTable:SetIdentifier("Tile")
+        AddInputTable(tileTable)
+
+        InputTable techniqueTable
+        techniqueTable:SetIdentifier("Technique")
+        
+        InputSet escape
+        escape:SetKeyboardInput(keys:ESCAPE)
+        CancelToMovementBehavior cancelBehavior
+        techniqueTable:Add(escape, cancelBehavior)
+
+        ConfirmTechniqueBehavior confirmBehavior
+        techniqueTable:Add(space, confirmBehavior)
+        techniqueTable:Add(enter, confirmBehavior)
+        
+        NextTechniqueBehavior nextTechniqueBehavior
+        nextTechniqueBehavior:SetTabPane(pane)
+        PreviousTechniqueBehavior previousTechniqueBehavior
+        previousTechniqueBehavior:SetTabPane(pane)
+
+        InputSet tab
+        tab:SetKeyboardInput(keys:TAB)
+        InputSet shiftTab
+        shiftTab:SetKeyboardInput(keys:TAB)
+        shiftTab:AddModifier(shiftTab:SHIFT)
+
+        techniqueTable:Add(rightArrow, nextTechniqueBehavior)
+        techniqueTable:Add(tab, nextTechniqueBehavior)
+        techniqueTable:Add(leftArrow, previousTechniqueBehavior)
+        techniqueTable:Add(shiftTab, previousTechniqueBehavior)
+
+        AddInputTable(techniqueTable)
+
+        SetupLayouts()
+        SetupTabPane()
+
+        Layer2D layer
+        obstructionLayer = layer
+        techniqueCover:AddLayout(paneLayout)
+        techniqueCover:LoadFilledRectangle(1, 1, color:CustomColor(0.5, 0.5, 0.5, 0.5))
+        techniqueCover:Resize()
+        obstructionLayer:Add(techniqueCover)
+        AddLayer(obstructionLayer)
+
+        Add(paneBorder)
+        Add(paneBackground)
+        Add(gridRegion)
+        Add(pane)
+
+        NextLevel()
+    end
+
+    action NextLevel
+        currentLevel = currentLevel + 1
+        if currentLevel = 1
+            Level1 level
+            level:Initialize()
+            LoadLevel(level)
+        elseif currentLevel = 2
+            Level2 level
+            level:Initialize()
+            LoadLevel(level)
+        else
+            output "You've beaten the last level!"
+        end
+    end
+
+    action GetGrid returns Grid
+        return grid
+    end
+
+    action GetPlayer returns Player
+        return player
+    end
+
+    action SetupLayouts
+        gridLayout:SetPercentageX(0.5)
+        gridLayout:SetPercentageY(0.5)
+        gridLayout:SetPercentageOriginX(0.5)
+        gridLayout:SetPercentageOriginY(0.5)
+
+        paneLayout:SetPercentageWidth(paneWidthPercentage)
+        paneLayout:SetWidthOffset(100)
+        paneLayout:SetPercentageHeight(1)
+        paneLayout:SetPercentageX(1)
+        paneLayout:SetPercentageOriginX(1)
+        paneLayout:SetPercentageY(1)
+        paneLayout:SetPercentageOriginY(1)
+
+        regionLayout:SetPercentageWidth(1 - paneWidthPercentage)
+        regionLayout:SetWidthOffset(-100)
+        regionLayout:SetPercentageHeight(1)
+        regionLayout:SetPercentageX(0)
+        regionLayout:SetPercentageY(0)
+
+        backgroundLayout:SetPercentageX(0)
+        backgroundLayout:SetPercentageY(0)
+        backgroundLayout:SetPercentageWidth(1)
+        backgroundLayout:SetPercentageHeight(1)
+
+        tabContentLayout:SetPercentageX(0)
+        tabContentLayout:SetPercentageY(0)
+        tabContentLayout:SetPercentageWidth(1)
+        tabContentLayout:SetPercentageHeight(1)
+
+        tabBackgroundLayout:SetPercentageWidth(paneWidthPercentage)
+        tabBackgroundLayout:SetWidthOffset(99)
+        tabBackgroundLayout:SetPercentageHeight(1)
+        tabBackgroundLayout:SetPercentageX(1)
+        tabBackgroundLayout:SetPercentageOriginX(1)
+        tabBackgroundLayout:SetPercentageY(1)
+        tabBackgroundLayout:SetPercentageOriginY(1)
+
+        pane:AddLayout(paneLayout)
+        gridRegion:AddLayout(regionLayout)
+    end
+
+    action SetupTabPane
+        Array<Tab> tabs
+
+        // Placeholder icons.
+        Drawable waitIcon
+        waitIcon:LoadFilledRectangle(1, 1, color:White())
+
+        Drawable cannonIcon
+        cannonIcon:LoadFilledRectangle(1, 1, color:Red())
+
+        Technique wait
+        wait:SetHeader("Wait", 32)
+        wait:SetFontSize(16)
+        wait:SetDescription("Do nothing and end the turn.")
+        wait:SetAreaOfEffect("None")
+        wait:SetDamage("None")
+        wait:SetEffects("None")
+        wait:Initialize()
+        WaitBehavior waitBehavior
+        wait:SetConfirmBehavior(waitBehavior)
+
+        Technique cannon
+        cannon:SetHeader("Cannon", 32)
+        cannon:SetFontSize(16)
+        cannon:SetDescription("Fire your cannon down a column, hitting the first "
+            + "enemy and pushing it back 1 tile.")
+        cannon:SetAreaOfEffect("First enemy in column")
+        cannon:SetDamage("1")
+        cannon:SetEffects("Push 1")
+        cannon:Initialize()
+        CannonBehavior cannonBehavior
+        cannon:SetConfirmBehavior(cannonBehavior)
+
+        Tab cannonTab
+        cannonTab:Initialize("Cannon", cannon, cannonIcon)
+        tabs:Add(cannonTab)
+
+        Tab waitTab
+        waitTab:Initialize("Wait", wait, waitIcon)
+        tabs:Add(waitTab)
+
+        pane:Initialize(1, 1, tabs)
+        Gradient backgroundGradient
+        Color gray
+        gray:SetColor(0.55, 0.55, 0.6, 0.25)
+        Color lightGray
+        lightGray:SetColor(0.8, 0.8, 0.8, 0.15)
+        backgroundGradient:Set(gray, gray, lightGray, lightGray)
+
+        paneBorder:LoadFilledRectangle(1, 1, color:CustomColor(1, 1, 1, 0.25))
+        paneBorder:AddLayout(paneLayout)
+        paneBorder:Resize()
+
+        paneBackground:LoadFilledRectangle(1, 1, backgroundGradient)
+        paneBackground:AddLayout(tabBackgroundLayout)
+        paneBackground:Resize()
+    end
+
+    action LoadLevel(Level level)
+        if me:grid not= undefined
+            Remove(me:grid)
+        end
+
+        Player player
+        player:Initialize(80)
+        me:player = player
+
+        gridRegion:Empty()
+
+        Grid grid
+        me:grid = grid
+        grid:Load(level, player)
+        SetSkybox(level:GetSkybox())
+        grid:AddLayout(gridLayout)
+        gridRegion:Add(grid)
+
+        gridRegion:Resize()
+        pane:Resize()
+    end
+
+    action OnMovementFinish
+        // Trigger the action phase.
+        // Gray out the selection highlight.
+        // Reset the player idle animation.
+        grid:Disable()
+        RemoveLayer(obstructionLayer)
+        pane:GetCurrentItem():Focus()
+    end
+
+    action CancelToMovementPhase
+        grid:Enable()
+        AddLayer(obstructionLayer)
+        grid:Focus(grid:GetFocusX(), grid:GetFocusY())
+    end
+
+    action GetSquareLength returns number
+        return squareLength
+    end
+
+    action EndActionPhase
+        grid:Enable()
+        AddLayer(obstructionLayer)
+        enemyPhaseTimer = 0
+    end
+
+    action EndEnemyMovement
+        grid:Focus(player:GetXIndex(), player:GetYIndex())
+        grid:EndOfTurn()
+    end
+
+    action NextTurn
+        grid:NextTurn()
+    end
+
+    action Update(number seconds)
+        behaviorQueue:Update(seconds)
+
+        if skybox not= undefined
+            skybox:Rotate(0, 1, 0, 0.2 * seconds)
+        end
+
+        repeat until toRemove:IsEmpty()
+            Item2D removal = toRemove:RemoveFromFront()
+            Remove(removal)
+        end
+
+        if enemyPhaseTimer >= 0
+            enemyPhaseTimer = enemyPhaseTimer + seconds
+        end
+
+        if enemyPhaseTimer > 1
+            enemyPhaseTimer = -1
+            grid:EnemyMovement()
+        end
+    end
+
+    action AddBehavior(Behavior behavior)
+        behaviorQueue:AddBehavior(behavior)
+    end
+
+    action MarkForRemoval(Item2D item)
+        toRemove:Add(item)
+    end
+
+    action SetSkybox(Skybox box)
+        parent:Game:SetSkybox(box)
+        skybox = box
+    end
+end

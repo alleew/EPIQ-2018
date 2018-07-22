@@ -1,0 +1,59 @@
+use Libraries.Interface.Item2D
+use Libraries.Game.Graphics.Texture
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Drawable
+
+class HealthBar is Item2D
+    
+    Entity entity = undefined
+    Texture health = undefined
+    Texture damage = undefined
+    number height = 0
+    boolean initialized = false
+
+    FlowLayout layout
+
+    action SetEntity(Entity e)
+        entity = e
+    end
+
+    action Initialize(Entity e, Texture health, Texture damage)
+        layout:SetPercentageX(0)
+        layout:SetPercentageY(0)
+        AddLayout(layout)
+
+        SetEntity(e)
+        me:health = health
+        me:damage = damage
+        height = entity:GetHeight() / 5.0
+
+        initialized = true
+        UpdateBar()
+    end
+
+    action IsInitialized returns boolean
+        return initialized
+    end
+
+    action UpdateBar
+        if entity:GetMaximumHP() <= 0
+            return now
+        end
+
+        Empty()
+        
+        integer counter = 0
+        repeat while counter < entity:GetMaximumHP()
+            Drawable pip
+            if counter < entity:GetHP()
+                pip:Load(health)
+            else
+                pip:Load(damage)
+            end
+            pip:SetSize(height, height/2)
+            Add(pip)
+            counter = counter + 1
+        end
+        Resize()
+    end
+end

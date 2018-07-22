@@ -1,0 +1,125 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.Graphics.Drawable
+use Libraries.Containers.Array
+use Libraries.Game.Graphics.Texture
+use Libraries.Game.Graphics.Color
+use Libraries.Game.GameStateManager
+use Libraries.Sound.Audio
+
+class ExplosionAnimationBehavior is Behavior
+
+    Drawable drawable = undefined
+    Array<Texture> frames
+    number timer = 0
+    number startLimit = 0.08
+    number endLimit = 0.40
+    integer index = 0
+    boolean ascending = true
+    boolean destroyed = false
+
+    Audio audio
+
+    number alpha = 1
+    number alphaFalloff = 0.15
+
+    integer x = -1
+    integer y = -1
+
+    action SetPosition(integer x, integer y)
+        me:x = x
+        me:y = y
+    end
+
+    action SetDestroyed(boolean destroy)
+        destroyed = destroy
+    end
+
+    action SetDrawable(Drawable d)
+        drawable = d
+    end
+
+    action Run(BehaviorEvent event)
+        Texture frame1
+        frame1:LoadFromFile("Assets/Explosions/ExplosionFrame1.png")
+        Texture frame2
+        frame2:LoadFromFile("Assets/Explosions/ExplosionFrame2.png")
+        Texture frame3
+        frame3:LoadFromFile("Assets/Explosions/ExplosionFrame3.png")
+        Texture frame4
+        frame4:LoadFromFile("Assets/Explosions/ExplosionFrame4.png")
+        Texture frame5
+        frame5:LoadFromFile("Assets/Explosions/ExplosionFrame5.png")
+        Texture frame6
+        frame6:LoadFromFile("Assets/Explosions/ExplosionFrame6.png")
+        frames:Add(frame1)
+        frames:Add(frame2)
+        frames:Add(frame3)
+        frames:Add(frame4)
+        frames:Add(frame5)
+        frames:Add(frame6)
+
+        drawable:Load(frames:Get(0))
+        
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+
+        number length = main:GetSquareLength()
+        drawable:SetSize(length, length)
+
+        Grid grid = main:GetGrid()
+        drawable:SetCenter(grid:GetX() + grid:GetCenterXCoordinate(x), grid:GetY() + grid:GetCenterYCoordinate(y))
+
+        if destroyed
+            audio:Load("Assets/Audio/Medium Explosion.wav")
+        else
+            audio:Load("Assets/Audio/Small Explosion.wav")
+        end
+        audio:Play()
+    end
+
+    action Update(number seconds)
+        if index < 0
+            return now
+        end
+
+        timer = timer + seconds
+        if ascending
+            if timer > startLimit
+                index = index + 1
+                if index >= frames:GetSize()
+                    ascending = false
+                    index = frames:GetSize() - 1
+                else
+                    drawable:SetTexture(frames:Get(index))
+                end
+            end
+        else
+            if timer > endLimit
+                index = index - 1
+                if index < 0
+                    drawable:Hide()
+                else
+                    drawable:SetTexture(frames:Get(index))
+                    Color color
+                    alpha = alpha - alphaFalloff
+                    color:SetColor(1, 1, 1, alpha)
+                    drawable:SetColor(color)
+                end
+            end
+        end
+    end
+
+    action Dispose
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        main:MarkForRemoval(drawable)
+
+        audio:Stop()
+        audio:Dispose()
+    end
+
+    action IsFinished returns boolean
+        return index < 0 and not audio:IsPlaying()
+    end
+end

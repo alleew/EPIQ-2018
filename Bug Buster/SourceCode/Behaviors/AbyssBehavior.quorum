@@ -1,0 +1,74 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.Graphics.Drawable
+use Libraries.Interface.Item
+use Libraries.Game.GameStateManager
+use Libraries.Compute.Vector2
+use Libraries.Compute.Random
+
+class AbyssBehavior is Behavior
+
+    Drawable drawable = undefined
+    integer x = 0
+    integer y = 0
+    number rotationRate = 0
+    Vector2 drift
+    number scale = 1.0
+    number rotation = 0
+
+    number startXCenter = 0
+    number startYCenter = 0
+
+    Random random
+    
+    action SetPosition(integer x, integer y)
+        me:x = x
+        me:y = y
+    end
+
+    action Run(BehaviorEvent event)
+        Item item = event:GetItem()
+        if item is Drawable
+            drawable = cast(Drawable, item)
+        end
+
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+
+        number length = main:GetSquareLength()
+        drawable:SetSize(length, length)
+
+        Grid grid = main:GetGrid()
+        drawable:SetCenter(grid:GetX() + grid:GetCenterXCoordinate(x), grid:GetY() + grid:GetCenterYCoordinate(y))
+
+        startXCenter = drawable:GetX()
+        startYCenter = drawable:GetY()
+
+        rotationRate = (random:RandomNumber() - 0.5) * 60
+        drift:Set(random:RandomNumber() - 0.5, random:RandomNumber() - 0.5)
+    end
+
+    action Update(number seconds)
+        scale = scale - 0.75 * seconds
+        rotation = rotation + rotationRate * seconds
+
+        if scale <= 0.0001
+            scale = 0.0001
+        end
+
+        drawable:SetScaleFromCenter(scale)
+        drawable:SetRotation(rotation)
+
+        // Add drift component here.
+    end
+
+    action IsFinished returns boolean
+        return scale <= 0.01
+    end
+
+    action Dispose
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        main:MarkForRemoval(drawable)
+    end
+end

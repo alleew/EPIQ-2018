@@ -1,0 +1,498 @@
+use Libraries.Containers.Array
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Containers.Support.Pair
+use Libraries.Containers.Iterator
+use Libraries.Game.Graphics.Texture
+
+class Grid is Drawable
+
+    number padding = 2
+    Level level = undefined
+    Player player = undefined
+    Drawable selectionHighlight
+    Color color
+    integer focusX = -1
+    integer focusY = -1
+
+    Array<Entity> entities
+    Array<Entity> enemies
+
+    integer turn = -1
+
+    action Load(Level level, Player player)
+        me:level = level
+
+        number length = level:GetSquareLength()
+        integer width = level:GetWidth()
+        integer height = level:GetHeight()
+
+//        LoadFilledRectangle(cast(integer, (length + padding) * width + padding), cast(integer, (length + padding) * height + padding))
+        SetSize((length + padding) * width + padding, (length + padding) * height + padding)
+
+        Texture lineTexture
+        lineTexture:LoadFilledRectangle(1, 1, color:Black())
+        integer horizontalCounter = 0
+        repeat while horizontalCounter <= height
+            Drawable nextLine
+            nextLine:Load(lineTexture)
+            nextLine:SetSize((length + padding) * width + padding, padding)
+            nextLine:SetPosition(0, (length + padding) * horizontalCounter)
+            Add(nextLine)
+            horizontalCounter = horizontalCounter + 1
+        end
+
+        integer verticalCounter = 0
+        repeat while verticalCounter <= width
+            Drawable nextLine
+            nextLine:Load(lineTexture)
+            nextLine:SetSize(padding, (length + padding) * height + padding)
+            nextLine:SetPosition((length + padding) * verticalCounter, 0)
+            Add(nextLine)
+            verticalCounter = verticalCounter + 1
+        end
+
+        number x = padding
+        number y = padding
+        integer column = 0
+        integer row = 0
+
+        Array<Array<Tile>> tiles = level:GetTiles()
+
+        repeat while column < width
+            row = 0
+            Array<Tile> array = tiles:Get(column)
+            repeat while row < height
+                Tile tile = array:Get(row)
+                tile:SetPosition(x, y)
+                tile:SetIndices(column, row)
+                tile:SetGrid(me)
+                Add(tile)
+                y = y + length + padding
+                row = row + 1
+            end
+            x = x + length + padding
+            y = padding
+            column = column + 1
+        end
+
+        Array<Entity> startingEnemies = level:GetStartingEnemies()
+        Array<Pair<integer>> startingEnemyPositions = level:GetStartingEnemyPositions()
+
+        integer enemyCounter = 0
+        repeat while enemyCounter < startingEnemies:GetSize()
+            Entity enemy = startingEnemies:Get(enemyCounter)
+            Pair<integer> pair = startingEnemyPositions:Get(enemyCounter)
+            AddEntity(enemy, pair:GetFirstValue(), pair:GetSecondValue())
+            enemyCounter = enemyCounter + 1
+        end
+
+        selectionHighlight:Load("Assets/Grid Selection.png")
+        selectionHighlight:SetSize(length, length)
+
+        Start(player, level:GetStartX(), level:GetStartY())
+    end
+
+    /*
+    Focuses the tile located at the position represented by the given x, y coordinates.
+    */
+    action Focus(integer x, integer y)
+        Tile tile = Get(x, y)
+        if tile = undefined
+            // Play error sound.
+            return now
+        end
+
+        focusX = x
+        focusY = y
+
+        tile:Focus()
+    end
+
+    action RequestFocusHighlight(Tile tile)
+        Item2D parentItem = selectionHighlight:GetParent()
+        if parentItem not= undefined
+            parentItem:Remove(selectionHighlight)
+        end
+        
+        tile:Add(selectionHighlight)
+    end
+
+    action GetLevel returns Level
+        return level
+    end
+
+    /*
+    Returns the Tile located at the given position.
+    */
+    action Get(integer x, integer y) returns Tile
+        if x < 0 or y < 0 or x >= level:GetWidth() or y >= level:GetHeight()
+            return undefined
+        end
+
+        Array<Array<Tile>> array = level:GetTiles()
+        return array:Get(x):Get(y)
+    end
+
+    action GetCenterXCoordinate(integer x) returns number
+        return level:GetTiles():Get(x):Get(0):GetX() + level:GetSquareLength()/2
+    end
+
+    action GetCenterYCoordinate(integer y) returns number
+        return level:GetTiles():Get(0):Get(y):GetY() + level:GetSquareLength()/2
+    end
+
+    action GetXCoordinate(integer x) returns number
+       return level:GetTiles():Get(x):Get(0):GetX() 
+    end
+
+    action GetYCoordinate(integer y) returns number
+        return level:GetTiles():Get(0):Get(y):GetY()
+    end
+
+    action GetTiles returns Array<Array<Tile>>
+        return level:GetTiles()
+    end
+
+    /*
+    Returns the x coordinate of the focused tile on the grid.
+    */
+    action GetFocusX returns integer
+        return focusX
+    end
+
+    /*
+    Returns the y coordinate of the focused tile on the grid.
+    */
+    action GetFocusY returns integer
+        return focusY
+    end
+
+    /*
+    Starts the loaded level by giving the grid access to the player and placing
+    it at coordinates x, y.
+    */
+    action Start(Player player, integer x, integer y)
+        me:player = player
+        player:SetStartIndices(x, y)
+//        player:SetIndices(x, y)
+//        PositionEntity(player, x, y)
+//        Add(player)
+        AddEntity(player, x, y)
+        Focus(x, y)
+    end
+
+    action GetPlayer returns Player
+        return player
+    end
+
+//    action PositionEntity(Entity entity, integer x, integer y)
+////        entity:SetCenter(GetCenterXCoordinate(x), GetCenterYCoordinate(y))
+//        entity:SetPosition(GetXCoordinate(x), GetYCoordinate(y))
+//        if entity is Player
+//            
+//        end
+//    end
+
+    action MoveTo(integer x, integer y)
+        // Triggers instantly at the moment.
+        // This will take time later when movement is animated.
+//        PositionEntity(player, x, y)
+        Tile tile = player:GetTile()
+        if tile not= undefined
+            tile:SetEntity(undefined)
+        end
+
+        tile = Get(x, y)
+        if tile not= undefined
+            tile:SetEntity(player)
+            player:SetIndices(x, y)
+        end
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        main:OnMovementFinish()
+    end
+
+    action Disable
+        selectionHighlight:SetColor(color:CustomColor(0.6, 0.6, 0.6, 1))
+        SetTilesFocusable(false)
+    end
+
+    action Enable
+        selectionHighlight:SetColor(color:White())
+        SetTilesFocusable(true)
+//        Focus(focusX, focusY)
+    end
+
+    /*
+    Sets whether or not tiles are focusable. Used during transitions to and from
+    the action phase.
+    */
+    action SetTilesFocusable(boolean focusable)
+        Array<Array<Tile>> tiles = GetTiles()
+        integer column = 0
+        repeat while column < tiles:GetSize()
+            integer row = 0
+            Array<Tile> array = tiles:Get(column)
+            repeat while row < array:GetSize()
+                array:Get(row):SetFocusable(focusable)
+                row = row + 1
+            end
+            column = column + 1
+        end
+    end
+
+    action AddEntity(Entity entity, integer x, integer y)
+        Tile tile = Get(x, y)
+        if tile:HasEntity()
+            output "WARNING: Attempted to add entity to already populated tile."
+            output "Coordinates: (" + x + ", " + y + ")"
+            output "Existing entity is " + tile:GetEntity():GetName() + ", new entity is " + entity:GetName()
+            return now
+        end
+
+        tile:SetEntity(entity)
+        entities:Add(entity)
+        if entity:GetType() = entity:ENEMY
+            enemies:Add(entity)
+        elseif entity:GetType() = entity:PLAYER
+            Player player = cast(Player, entity)
+            player:SetIndices(x, y)
+        end
+    end
+
+    action RemoveEntity(Entity entity)
+        Tile tile = entity:GetTile()
+        if tile not= undefined
+            tile:SetEntity(undefined)
+        end
+        entities:Remove(entity)
+        if entity:GetType() = entity:ENEMY
+            enemies:Remove(entity)
+        end
+    end
+
+    action ReplaceEntity(Entity oldEntity, Entity newEntity)
+        Tile tile = oldEntity:GetTile()
+        integer index = entities:GetFirstLocation(oldEntity)
+        integer enemyIndex = enemies:GetFirstLocation(oldEntity)
+        tile:SetEntity(newEntity)
+        if index >= 0
+            entities:Set(index, newEntity)
+        else
+            entities:Add(newEntity)
+        end
+
+        if enemyIndex >= 0 and newEntity:GetType() = newEntity:ENEMY
+            enemies:Set(enemyIndex, newEntity)
+        end
+    end
+
+    action GetEntitiesInColumn(integer x) returns Array<Entity>
+        Array<Entity> columnEntities
+        Array<Tile> column = GetTiles():Get(x)
+
+        integer counter = 0
+        repeat while counter < column:GetSize()
+            Entity entity = column:Get(counter):GetEntity()
+            if entity not= undefined
+                columnEntities:Add(entity)
+            end
+            counter = counter + 1
+        end
+
+        return columnEntities
+    end
+
+    /*
+    Pushes back an entity in the chosen tile, if one is present. If an entity
+    is present in the Tile but can't be pushed back for some reason, this 
+    returns false.
+
+    xPush and yPush represent distance to push along x and y axis. They must be
+    between -1 and 1.
+    */
+    action PushBack(Tile tile, integer xPush, integer yPush) returns boolean
+        Entity entity = tile:GetEntity()
+        if entity = undefined
+            return true
+        end
+
+        if entity:IsPushable()
+            integer tileX = entity:GetXIndex() + xPush
+            integer tileY = entity:GetYIndex() + yPush
+            Tile newTile = Get(tileX, tileY)
+            if newTile = undefined or PushBack(newTile, xPush, yPush) = false
+                // Collision can optionally have a damage component.
+//                entity:Damage(1)
+                return false
+            else
+                // Movement is instant for now.
+                tile:SetEntity(undefined)
+                newTile:SetEntity(entity)
+            end
+        end
+        
+        return true
+    end
+
+    action ResetTilePaths
+        integer column = 0
+        Array<Array<Tile>> tiles = GetTiles()
+        repeat while column < tiles:GetSize()
+            Array<Tile> array = tiles:Get(column)
+            integer row = 0
+            repeat while row < array:GetSize()
+                array:Get(row):ResetTilePath()
+                row = row + 1
+            end
+            column = column + 1
+        end
+    end
+
+    action EnemyMovement
+        integer enemyCount = 0
+        repeat while enemyCount < enemies:GetSize()
+            ResetTilePaths()
+            Entity enemy = enemies:Get(enemyCount)
+            Array<Tile> path = enemy:GetTile():FindPathToBase(enemy:IsFlying())
+            
+            integer counter = 0
+            if path not= undefined
+                integer move = enemy:GetMovement()
+                if move >= path:GetSize()
+                    move = path:GetSize() - 1
+                end
+
+                // The first point in the path is always the starting tile
+                // (no need to move to it).
+                repeat while move >= 1
+                    if path:Get(move):HasEntity()
+                        move = move - 1
+                    else
+                        Tile target = path:Get(move)
+                        AddMovementBehavior(enemy, target:GetXIndex(), target:GetYIndex())
+                        move = 0
+                    end
+                end
+            end
+
+            enemyCount = enemyCount + 1
+        end
+
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        EndEnemyMovementBehavior endMovement
+        main:AddBehavior(endMovement)
+    end
+
+    action EndOfTurn
+        Iterator<Entity> iterator = entities:GetIterator()
+        repeat while iterator:HasNext()
+            Entity entity = iterator:Next()
+            entity:OnTurnEnd()
+        end
+        
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        NextTurnBehavior nextTurn
+        main:AddBehavior(nextTurn)
+    end
+
+    action NextTurn
+        turn = turn + 1
+        Array<Array<Behavior>> turnBehaviors = level:GetTurnBehaviors()
+
+        if turn < turnBehaviors:GetSize()
+            Array<Behavior> array = turnBehaviors:Get(turn)
+            integer counter = 0
+            BehaviorEvent event
+            event:SetItem(me)
+            repeat while counter < array:GetSize()
+                array:Get(counter):Run(event)
+                counter = counter + 1
+            end
+        elseif enemies:IsEmpty()
+            LoadLevelBehavior nextLevel
+            GameStateManager manager
+            Main main = cast(Main, manager:GetGame())
+            main:AddBehavior(nextLevel)
+            return now
+        end
+
+        GridRefocusBehavior refocus
+
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        main:AddBehavior(refocus)
+    end
+
+    action AddMovementBehavior(Entity entity, integer x, integer y)
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+
+        EntityMovementBehavior behavior
+        behavior:SetDestination(x, y)
+        behavior:SetEntity(entity)
+
+        main:AddBehavior(behavior)
+    end
+
+    /*
+    Gets the next "relevant" tile from the current one. Relevant tiles have
+    an entity on them. If the tile provided is undefined or "non-relevant" this
+    will get the first item.
+    */
+    action GetNextTile(Tile current) returns Item
+        integer index = -1
+        if current not= undefined and current:GetEntity() not= undefined
+            index = entities:GetFirstLocation(current:GetEntity())
+        end
+
+        Tile tile = undefined
+        if index < 0
+            if not entities:IsEmpty()
+                tile = entities:Get(0):GetTile()
+            end
+        else
+            index = (index + 1) mod entities:GetSize()
+            tile = entities:Get(index):GetTile()
+        end
+
+        return tile
+    end
+
+    action GetPreviousTile(Tile current) returns Item
+        integer index = -1
+        if current not= undefined and current:GetEntity() not= undefined
+            index = entities:GetFirstLocation(current:GetEntity())
+        end
+
+        Tile tile = undefined
+        if index < 0
+            if not entities:IsEmpty()
+                tile = entities:Get(0):GetTile()
+            end
+        else
+            index = (index - 1)
+            if index < 0
+                index = entities:GetSize() - 1
+            end
+            tile = entities:Get(index):GetTile()
+        end
+
+        return tile
+    end
+
+    action GetColumnCount returns integer
+        return level:GetWidth()
+    end
+
+    action GetRowCount returns integer
+        return level:GetHeight()
+    end
+
+end

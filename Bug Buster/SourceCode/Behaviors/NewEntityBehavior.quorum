@@ -1,0 +1,36 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Item
+use Libraries.Game.GameStateManager
+
+class NewEntityBehavior is Behavior
+
+    Entity entity = undefined
+    integer x = -1
+    integer y = -1
+
+    action SetEntity(Entity e)
+        entity = e
+    end
+
+    action SetPosition(integer x, integer y)
+        me:x = x
+        me:y = y
+    end
+
+    action Run(BehaviorEvent event)
+        AddEntityBehavior addBehavior
+        addBehavior:SetEntity(entity)
+        addBehavior:SetPosition(x, y)
+        
+        ReportInformationBehavior reportBehavior
+        GameplayInfo info
+        info:Set(entity:GetName(), "appeared at " + x + " " + y)
+        reportBehavior:SetInfo(info)
+
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        main:AddBehavior(addBehavior)
+        main:AddBehavior(reportBehavior)
+    end
+end

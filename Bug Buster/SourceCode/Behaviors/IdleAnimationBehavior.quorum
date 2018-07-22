@@ -1,0 +1,58 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Game.Graphics.Texture
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.Graphics.Drawable
+use Libraries.Interface.Item
+use Libraries.Containers.Array
+
+class IdleAnimationBehavior is Behavior
+    
+    Texture idleTexture
+    Array<Texture> animationFrames
+    Drawable drawable = undefined
+    
+    integer index = -1
+    number waitTimer = 0
+    number waitLimit = 2
+    number idleTimer = 0
+    number idleLimit = 0.08
+
+    action SetTextures(Texture idle, Array<Texture> animations)
+        idleTexture = idle
+        animationFrames = animations
+    end
+
+    action Run(BehaviorEvent event)
+        Item item = event:GetItem()
+        if item is Drawable
+            drawable = cast(Drawable, item)
+        end
+    end
+
+    action Update(number seconds)
+        if index = -1
+            waitTimer = waitTimer + seconds
+            if waitTimer > waitLimit
+                index = 0
+                drawable:SetTexture(animationFrames:Get(0))
+                waitTimer = 0
+            end
+        else
+            idleTimer = idleTimer + seconds
+            if idleTimer > idleLimit
+                if index >= animationFrames:GetSize()
+                    drawable:SetTexture(idleTexture)
+                    index = -1
+                else
+                    drawable:SetTexture(animationFrames:Get(index))
+                    index = index + 1
+                end
+                idleTimer = 0
+            end
+        end
+    end
+
+    action IsFinished returns boolean
+        return false
+    end
+end

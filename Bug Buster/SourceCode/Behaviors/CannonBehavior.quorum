@@ -1,0 +1,93 @@
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Containers.Array
+use Libraries.Game.Graphics.Drawable
+
+class CannonBehavior is Behavior
+
+    GameStateManager manager
+
+    action Run(BehaviorEvent event)
+        Main main = cast(Main, manager:GetGame())
+        Grid grid = main:GetGrid()
+        Player player = main:GetPlayer()
+
+        Array<Entity> entities = grid:GetEntitiesInColumn(player:GetXIndex())
+        integer counter = 0
+        integer minimum = counter:GetMaximumValue()
+        Entity target = undefined
+
+        GameplayInfo info
+
+        repeat while counter < entities:GetSize()
+            Entity entity = entities:Get(counter)
+            if not (entity is Player) and entity:GetYIndex() < minimum
+                target = entity
+                minimum = entity:GetYIndex()
+            end
+            counter = counter + 1
+        end
+
+        integer explosionX = player:GetXIndex()
+        integer explosionY = minimum
+        if explosionY >= grid:GetRowCount()
+            explosionY = grid:GetRowCount() - 1
+        end
+
+        targetName = ""
+        targetDescription = ""
+        // Boolean used for the ExplosionAnimationBehavior.
+        boolean destroyed = false
+
+        if target not= undefined
+            targetName = "Hit " + target:GetName()
+
+            target:Damage(1)
+
+            if target:IsDestructible()
+                if target:GetHP() > 0
+                    targetDescription = target:GetHP() + " of " + target:GetMaximumHP() + " HP"
+                else
+                    targetName = target:GetName()
+                    targetDescription = "Destroyed"
+                    destroyed = true
+                end
+            else
+//                targetName = targetName + ", "
+            end
+
+            Tile tile = grid:Get(target:GetXIndex(), target:GetYIndex())
+            if tile not= undefined and (not target:IsDestructible() or target:GetHP() > 0)
+                grid:PushBack(tile, 0, 1)
+                Tile newTile = target:GetTile()
+                if newTile = undefined
+                    targetName = target:GetName()
+                    targetDescription = "Pushed into ABYSS."
+                elseif newTile = tile
+                    targetDescription = targetDescription + ", Remained at " + tile:GetXIndex() + " " + tile:GetYIndex()
+                else
+                    targetDescription = targetDescription + ", pushed to " + newTile:GetXIndex() + " " + newTile:GetYIndex()
+                end
+            end
+        else
+            targetName = "Missed."
+        end
+
+        Drawable explosion
+        ExplosionAnimationBehavior explosionAnimation
+        explosionAnimation:SetDrawable(explosion)
+        explosionAnimation:SetPosition(explosionX, explosionY)
+        explosionAnimation:SetDestroyed(destroyed)
+        main:Add(explosion)
+        explosion:AddBehavior(explosionAnimation)
+
+        info:Set(targetName, targetDescription)
+
+        ReportInformationBehavior report
+        report:SetInfo(info)
+        EndActionPhaseBehavior endBehavior
+        main:AddBehavior(report)
+        main:AddBehavior(endBehavior)
+    end
+end

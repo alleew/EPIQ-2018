@@ -1,0 +1,224 @@
+use Libraries.Interface.Item2D
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.Graphics.Color
+use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.Texture
+
+class Entity is Item2D
+    
+    public constant integer ENEMY = 0
+    public constant integer PLAYER = 1
+    public constant integer OBSTACLE = 2
+    public constant integer ALLY = 3
+
+    Drawable drawable = undefined
+    HealthBar healthBar
+    boolean pushable = false
+    integer maximumHP = -1
+    integer hp = -1
+    integer movement = 0
+    integer type = ENEMY
+    boolean flying = false
+
+    on create
+        SetFocusable(true)
+        SetAccessibilityCode(parent:Item:CUSTOM)
+    end
+
+    action SetType(integer value)
+        type = value
+    end
+
+    action GetType returns integer
+        return type
+    end
+
+    action SetDrawable(Drawable draw)
+        if drawable not= undefined
+            Remove(drawable)
+        end
+        drawable = draw
+        if drawable not= undefined
+            Add(drawable)
+
+            GameStateManager manager
+            Main main = cast(Main, manager:GetGame())
+            SetSize(main:GetSquareLength(), main:GetSquareLength())
+            drawable:SetSize(GetWidth(), GetHeight())
+
+            drawable:SetCenter(GetWidth()/2, GetHeight()/2)
+        end
+    end
+
+    action GetDrawable returns Drawable
+        return drawable
+    end
+
+    action SetPushable(boolean push)
+        pushable = push
+    end
+
+    action IsPushable returns boolean
+        return pushable
+    end
+
+    action IsDestructible returns boolean
+        return maximumHP > 0
+    end
+
+    action SetMaximumHP(integer hp)
+        maximumHP = hp
+        if not healthBar:IsInitialized()
+            Texture health
+            Texture damage
+            Color color
+            health:LoadFilledRectangle(1, 1, color:Green())
+            damage:LoadFilledRectangle(1, 1, color:Gray())
+            healthBar:Initialize(me, health, damage)
+            Add(healthBar)
+        end
+    end
+
+    action GetMaximumHP returns integer
+        return maximumHP
+    end
+
+    action SetHP(integer value)
+        hp = value
+        if healthBar:IsInitialized()
+            healthBar:UpdateBar()
+        end
+    end
+
+    action GetHP returns integer
+        return hp
+    end
+
+    action SetMovement(integer move)
+        movement = move
+    end
+
+    action GetMovement returns integer
+        return movement
+    end
+
+    action GetTile returns Tile
+        Item2D item = GetParent()
+        if item not= undefined and item is Tile
+            Tile tile = cast(Tile, item)
+            return tile
+        end
+        return undefined
+    end
+
+    action GetXIndex returns integer
+        Item2D item = GetParent()
+        if item not= undefined and item is Tile
+            Tile tile = cast(Tile, item)
+            return tile:GetXIndex()
+        end
+        return -1
+    end
+
+    action GetYIndex returns integer
+        Item2D item = GetParent()
+        if item not= undefined and item is Tile
+            Tile tile = cast(Tile, item)
+            return tile:GetYIndex()
+        end
+        return -1
+    end
+
+    action SetFlying(boolean fly)
+        flying = fly
+    end
+
+    action IsFlying returns boolean
+        return flying
+    end
+
+    /*
+    Reduces the health of the entity by the given amount, and destroys it if it
+    is below 0.
+    */
+    action Damage(integer value)
+        if not IsDestructible()
+            return now
+        end
+
+        SetHP(hp - value)
+
+        if hp <= 0
+            Destroy()
+        end
+    end
+
+    action GetGrid returns Grid
+        if GetTile() not= undefined
+            return GetTile():GetGrid()
+        end
+        return undefined
+    end
+
+    /*
+    Destroys this entity when it has taken lethal damage. Kills from falls into
+    an abyss are handled separately.
+    */
+    action Destroy
+        // Apply the visual effect of a destroyed enemy.
+        OnDefeat()
+    end
+
+    /*
+    Destroys this entity when it falls into an abyss.
+    */
+    action Fall
+        AbyssBehavior behavior
+        behavior:SetPosition(GetXIndex(), GetYIndex())
+        Drawable draw = drawable
+        SetDrawable(undefined)
+
+        // Remove the entity from the grid.
+        OnDefeat()
+
+        GameStateManager manager
+        Main main = cast(Main, manager:GetGame())
+        main:Add(draw)
+        draw:AddBehavior(behavior)
+    end
+
+    /*
+    Code called after the enemy is defeated, either by destroying it via damage
+    or killing it via some alternative condition.
+    */
+    action OnDefeat
+        GetGrid():RemoveEntity(me)
+    end
+
+    /*
+    Action called on each entity at the end of the turn.
+    */
+    action OnTurnEnd
+
+    end
+
+    action GetNextFocus returns Item
+        return GetTile()
+    end
+
+    action GetPreviousFocus returns Item
+        return GetTile()
+    end
+
+    action GetDescription returns text
+        text hitPoints = ""
+        if IsDestructible()
+            hitPoints = hp + " of " + maximumHP + " HP"
+        else
+            hitPoints = "Indestructable"
+        end
+
+        text movementPoints = movement + " movement."
+        return hitPoints + ", " + movementPoints
+    end
+end
